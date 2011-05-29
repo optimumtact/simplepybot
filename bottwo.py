@@ -33,7 +33,7 @@ def getQuotes (username):
   return "not implemented yet either"
 
 def setQuote (username, quote):
-  return "fail not implemented yet"
+  return "fail, not implemented yet"
 
 s=socket.socket( )
 s.connect((HOST, PORT))
@@ -55,4 +55,7 @@ while True:
            sendMessage(name+" is retarded", chan)
      if(line[1]=='PRIVMSG' and line[3]==':quit'):
        quit('Look at me, I can quit!')
-     
+       break
+     if(line[1]=='PRIVMSG' and line[3]=='dunnobot' and line[4]=='quotes')
+      sendMessage(getQuotes(line[5]))
+
