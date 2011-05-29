@@ -1,6 +1,6 @@
-hello fuffy, if you get this please modify it.
+hello fuffy, if you get this please modify it
 
-Then 
+Then run the following in your terminal (assuming you have git installed)
 git add testing
 git commit -m "right back at ya"
 git push
