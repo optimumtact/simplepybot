@@ -6,3 +6,6 @@ git commit -m "right back at ya"
 git push
 
 just so we can test if your key works
+
+
+Also, your ssh key BETTER be password protected...
