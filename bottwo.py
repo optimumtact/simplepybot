@@ -56,6 +56,6 @@ while True:
      if(line[1]=='PRIVMSG' and line[3]==':quit'):
        quit('Look at me, I can quit!')
        break
-     if(line[1]=='PRIVMSG' and line[3]=='dunnobot' and line[4]=='quotes')
+     if(line[1]=='PRIVMSG' and line[3]=='dunnobot' and line[4]=='quotes'):
       sendMessage(getQuotes(line[5]))
 
