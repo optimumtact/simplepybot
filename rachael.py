@@ -8,7 +8,7 @@ NICK="rachel"
 IDENT="botherd"
 REALNAME="This is a python bot"
 readbuffer=""
-chan='#cave'
+chan='#bots'
 quoteDict={"404":{"1":"No quote found","2":"Seriously, no quotes here at all","3":"No fucking joke man, no quotes, now piss off","4":"Ok Ok, Sun Tzu: Appear strong when you are weak and appear weak when you are strong"},"francis":{"1":"There are no trolls here","2":"Okay maybe just one"}}
 
 def sendMessage(msg, channel):
@@ -65,10 +65,6 @@ while True:
        s.send("PONG %s\r\n" % line[1])
      if(line[1]=="376"):
        s.send("JOIN "+chan+"\r\n")
-     if(line[1]=="353"):
-       for name in line:
-         if 'chris' in name or 'Chris' in name or 'TrueShiftBlue' in name:
-           sendMessage(name+" is retarded", chan)
      if(line[1]=='PRIVMSG' and line[3]==':quit'):
        quit('Look at me, I can quit!')
      if(line[1]=='PRIVMSG' and line[3]==':'+NICK and line[4]=='quotes'):
