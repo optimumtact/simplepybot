@@ -9,7 +9,7 @@ IDENT="botherd"
 REALNAME="This is a python bot"
 readbuffer=""
 chan='#cave'
-amount=10
+amount=2
 def sendMessage(bot, msg, channel):
   bot.send("PRIVMSG "+channel+" :"+msg+"\r\n")
 

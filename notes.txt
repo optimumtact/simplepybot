@@ -1,6 +1,35 @@
+
+Qoute bot:
+accepts:
+  $botname last $num quotes for $name --- will provide last $num qoutes for the person who is under $name
+  $botname all qoutes for $name --- provide all qoutes for the user (I'm unsure on this because someone could get a huge amount
+  $botname quotes $num to $num for $name --- provide all qoutes within this num id and this num2 id, will have some max limit
+  $botname qoute $num for $name --- provide num qoute for name
+  $botname random qoutes/quote for $name --- provide a random qoute or up to 5 random qoutes for a user, all unique
+
+notes:
+try not to break on bad commands :)
+
+Scorebot:
+accepts:
+  $name +$num --- accepts some num amount and adds that to the $name users score
+  score for $name --- return the score for user $name
+  $botname dispute --- will cause the bot to go into dispute mode where users can vote to give or deny points (perhaps abstain?)
+  $botname modify $name $score --- modify some users score by given num (don't know about this unless I can be sure the user is the admin)
+   perhaps we can do this through a private message to the user asking them for some password (doesn't matter to much about security as 
+   its only a qoute bot)
+
+notes:
+should be some limits on acceptable scores although the dispute function will help moderate it along with admin action
+should never be able to give points to yourself, perhaps when it gives the scores it will have some witty lines <_< for
+high scorers, probably low scorers as well >_>
+
+
+General:
 Add a special function
 whenever someone says "this"
 bot replys 
 "is"
 "MADNESS"
 /me kicks $name into pit
+
