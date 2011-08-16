@@ -10,21 +10,6 @@ accepts:
 notes:
 try not to break on bad commands :)
 
-Scorebot:
-accepts:
-  $name +$num --- accepts some num amount and adds that to the $name users score
-  score for $name --- return the score for user $name
-  $botname dispute --- will cause the bot to go into dispute mode where users can vote to give or deny points (perhaps abstain?)
-  $botname modify $name $score --- modify some users score by given num (don't know about this unless I can be sure the user is the admin)
-   perhaps we can do this through a private message to the user asking them for some password (doesn't matter to much about security as 
-   its only a qoute bot)
-
-notes:
-should be some limits on acceptable scores although the dispute function will help moderate it along with admin action
-should never be able to give points to yourself, perhaps when it gives the scores it will have some witty lines <_< for
-high scorers, probably low scorers as well >_>
-
-
 General:
 Add a special function
 whenever someone says "this"
