@@ -27,7 +27,7 @@ class QuoteBot ( ircbot.SingleServerIRCBot ):
   
 #turn event objects into nicely formatted strings
   def formatForDisplay(self, event):
-    displaystring=event.source().split('!')[0]+':'+event.arguments()[0]
+    displaystring='<'+event.source().split('!')[0]+'> '+event.arguments()[0]
     return displaystring
 
 #handle reporting of matching quotes
