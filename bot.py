@@ -1,6 +1,7 @@
 #!/usr/bin/env python2
 import ircbot
 import re
+import shelve
 # Connection information
 network = 'segfault.net.nz'
 port = 6667
@@ -19,28 +20,14 @@ class QuoteBot ( ircbot.SingleServerIRCBot ):
     self.spartareg=re.compile('this')
     self.counter=0
     self.bufSize=100
+    self.quotelib=shelve.open('ircquotes', flag='c') #open irc quote database, creating it if it doesn't yet exist
     ircbot.SingleServerIRCBot.__init__(self, network, nick, name)
 
+# Bot Methods below
 # Join the channel when welcomed
   def on_welcome ( self, connection, event ):
     connection.join ( channel )
   
-#turn event objects into nicely formatted strings
-  def formatForDisplay(self, event):
-    displaystring='<'+event.source().split('!')[0]+'> '+event.arguments()[0]
-    return displaystring
-
-#handle reporting of matching quotes
-  def reportMatches(self, pattern, connection):
-      matchbuf=[]
-      for event in self.linebuf:
-        if re.search(pattern, event.arguments()[0])!=None:
-          matchbuf.append(self.formatForDisplay(event))
-      if (len(matchbuf)>6):
-        connection.privmsg(channel, 'To many matches, please refine your search')
-      else:
-        for line in matchbuf:
-          connection.privmsg(channel, line)
 
 # React to channel messages
   def on_pubmsg ( self, connection, event ):
@@ -74,5 +61,28 @@ class QuoteBot ( ircbot.SingleServerIRCBot ):
       spartamode=False
     else:
       spartamode=True
+
+#Utility Methods
+  
+#turn event objects into nicely formatted strings
+  def formatForDisplay(self, event):
+    displaystring='<'+event.source().split('!')[0]+'> '+event.arguments()[0]
+    return displaystring
+
+#handle reporting of matching quotes
+  def reportMatches(self, pattern, connection):
+      matchbuf=[]
+      for event in self.linebuf:
+        if re.search(pattern, event.arguments()[0])!=None:
+          matchbuf.append(self.formatForDisplay(event))
+      if (len(matchbuf)>6):
+        connection.privmsg(channel, 'To many matches, please refine your search')
+      else:
+        for line in matchbuf:
+          connection.privmsg(channel, line)
+
+#handle insertion of new quote, as well as placing it into the appropriate name and date dicts
+  def addQuote(self, idnum):
+    
 bot = QuoteBot ([(network, port)], nick, name )
 bot.start()
