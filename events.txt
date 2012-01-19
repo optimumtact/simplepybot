@@ -1,6 +1,5 @@
-numeric_events = {"001": "welcome",
-
-u002": "yourhost",
+"001": "welcome",
+"002": "yourhost",
 "003": "created",
 "004": "myinfo",
 "005": "protocols",
@@ -162,5 +161,5 @@ u002": "yourhost",
 "491": "nooperhost",
 "492": "noservicehost",
 "501": "umodeunknownflag",
-"502": "usersdontmatch",
-}
+"502": "usersdontmatch"
+
