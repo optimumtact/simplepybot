@@ -11,10 +11,4 @@ notes:
 try not to break on bad commands :)
 
 General:
-Add a special function
-whenever someone says "this"
-bot replys 
-"is"
-"MADNESS"
-/me kicks $name into pit
 
