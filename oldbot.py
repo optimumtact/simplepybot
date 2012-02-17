@@ -82,20 +82,8 @@ nameDict=shelve.open('nameDict', flag='c')
       counter=self.counter+1
       if counter>=self.bufSize:
         counter=0
-#handle private msg commands
-  def on_privmsg(self, connection, event):
-    if(spartamode==True):
-      spartamode=False
-    else:
-      spartamode=True
-
-#Utility Methods
   
-  #get the message out of the event object
-  def getMsg(self, event):
-    return event.arguments()[0]
 
-  #turn event objects into nicely formatted strings
   def formatForDisplay(self, event):
     displaystring='<'+event.source().split('!')[0]+'> '+event.arguments()[0]
     return displaystring
@@ -140,5 +128,3 @@ nameDict=shelve.open('nameDict', flag='c')
         quotes+' '+quoteDict[quoteid]
       return quotes
 
-bot = QuoteBot ([(network, port)], nick, name )
-bot.start()
