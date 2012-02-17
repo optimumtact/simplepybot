@@ -4,9 +4,11 @@ import select
 import io
 import message
 socket
-
+bufsize=4096
+incomplete_buffer=""
 def recv():
   global socket
+  global bufsize
   d = socket.recv(bufsize)
   data=d.decode('utf-8', 'replace')
   if data:
@@ -41,9 +43,9 @@ def send(line, encode="utf-8"):
 def join (channels):
   global socket
   for channel in channels:
-    socket.send('JOIN #'+channel
+    socket.send('JOIN #'+channel)
 
-def connect(address, nick, ident, realname):
+def connect(address, nick, ident, server, realname):
   global socket
   socket=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
   socket.connect(address)

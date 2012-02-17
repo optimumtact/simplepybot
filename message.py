@@ -1,5 +1,4 @@
 import re
-import bot
 events = {
   "001": "welcome",
   "002": "yourhost",
@@ -165,10 +164,14 @@ events = {
   "492": "noservicehost",
   "501": "umodeunknownflag",
   "502": "usersdontmatch",
-  "PRIVMSG": "privmsg",
+  "PRIVMSG": "privmsg"
 }
+debug=True
 ircmsg=re.compile(r"(?P<prefix>:\S+ )?(?P<command>(\w+|d{3}))(?P<params>( [^ :]\S*)*)(?P<endprefix> :.*)?")
-
+handler=None
+def addHandler(h):
+  global handler
+  handler=h
 def parseMessage(message):
   global ircmsg
   global debug
@@ -190,11 +193,14 @@ def parseMessage(message):
     print('ERROR, unknown message passed')
 
 
-def handleMessage(group):
+def handleMessage(m):
   global numeric_events
-  if group.('command') in numeric_events
-    event=numeric_events[group.('command')]
-    if event=='welcome':
-      bot.on_welcome()
-    if event=='privmsg':
-      bot.on_privmsg(group.('params'), group.('endprefix')
+  global handler
+  if handler:
+    if m.group('command') in events:
+      event=events[m.group('command')]
+      if event=='welcome':
+        handler.on_welcome()
+      if event=='privmsg':
+        handler.on_privmsg(m.group('params'), m.group('endprefix'))
+  print("No handler defined")
