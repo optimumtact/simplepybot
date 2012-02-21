@@ -7,42 +7,50 @@ import re
 import shelve
 import datetime
 import sys
+
 #nickname of bot
 nick="quotebot"
 
 #ident server response (could probably set this up in script as well)
 ident="botherd"
+
 #email address of owner
 realname="mailto:optimumtact.junk@gmail.com"
+
 #address of server
 address=("irc.segfault.net.nz", 6667)
+
 #comma seperated list of channels, # are added automatically
 channels={"bots"}
 
 #network params
 #socket for all sending and receiving
 socket
+
 #size of the buffer
 bufsize=1024
+
 #buffer to hold incomplete messages
 incomplete_buffer=""
 
 #message params
 #irc regex to break message down in [prefix] command params* [prefix]
 ircmsg=re.compile(r"(?P<prefix>:\S+ )?(?P<command>(\w+|d{3}))(?P<params>( [^ :]\S*)*)(?P<endprefix> :.*)?")
+
 #replace this with propper logger
 debug=True
 
 linebuf=[] #stores the last bufSize messages from the channel
+
 autorejoin=True #autorejoin on kick
 
 #check for !quotes followed by an irc nick and an optional id
 listquotes=re.compile('^!quotes [A-Za-z_]+ *[0-9]*$')
 quote=re.compile('^!quote [\w+\s?]+$') #check for a !quote followed by a number of words and spaces 
 quitreg=re.compile(nick+':? quit') #check for my nickname followed by a optional colon and then quit
-rejoin_toggle=re.compile(nick+':? autojoin')
 counter=0 #current number of messages remembered
 bufSize=100 #sets the maximum size of the bots channel memory (number of messages remembered)
+
 #open dict storing id's with a single quote attached to each id from file, creating this file if it does not
 #exist
 quoteDict=shelve.open('id_quote_dict', flag='c') 
@@ -83,14 +91,6 @@ def on_privmsg(params, message, source):
     if match:
       msg(channel, addQuote(quoteID, match,  source.split('!')[0]))
   
-  #check for a rejoin toggle command
-  elif rejoin_toggle.match(message):
-    global autojoin
-    if autojoin:
-      autojoin=False
-    else:
-      autojoin=True
-
   #check for a quit command 
   elif quitreg.match(message):
     die('Remote User Kill');
@@ -103,19 +103,6 @@ def on_privmsg(params, message, source):
     if counter>=bufSize:
       counter=0
   
-
-#on a kick determine if I am the one who has been kicked, if so I need to check if autojoin is true
-#and return to the channel
-def on_kick(params, reason, admin):
-  global autorejoin
-  global nick
-  if params[0]==nick:
-    admin=admin.split('!')[0]
-    print('Kicked by admin %s', admin)#TODO replace with logger
-    if autorejoin:
-      #rejoin channel
-      join(params[1])
-
 #parse a given irc message with the irc regex and pass it off to handleMessage
 def parseMessage(message):
   global ircmsg
@@ -139,19 +126,6 @@ def parseMessage(message):
       endprefix=endprefix.lstrip(':')
     handleMessage(prefix, command, params, endprefix)
     
-    if debug:
-      print ('----Full Message----')
-      print (message)
-      print ('----Regex----')
-      print (prefix)
-      print (command)
-      print (params)
-      print (endprefix)
-      print('---------------------')
-  else:
-    if debug:
-      print (message)
-    print('ERROR, unknown message passed')
 
 #respond to a given irc message and depatch it to the correct method based on its command/event number
 def handleMessage(prefix, command, params, endprefix):
@@ -307,172 +281,11 @@ def lookupQuote(reference):
 #dict of irc events and commands
 events = {
   "001": "welcome",
-  "002": "yourhost",
-  "003": "created",
-  "004": "myinfo",
-  "005": "protocols",
-  "006": "map?",
-  "007": "endmap",
-  "008": "snomask",
-  "010": "?",
-  "200": "tracelink",
-  "201": "traceconnecting",
-  "202": "tracehandshake",
-  "203": "traceunknown",
-  "204": "traceoperator",
-  "205": "traceuser",
-  "206": "traceserver",
-  "207": "traceservice",
-  "208": "tracenewtype",
-  "209": "traceclass",
-  "210": "tracereconnect",
-  "211": "statslinkinfo",
-  "212": "statscommands",
-  "213": "statscline",
-  "214": "statsnline",
-  "215": "statsiline",
-  "216": "statskline",
-  "217": "statsqline",
-  "218": "statsyline",
-  "219": "endofstats",
-  "221": "umodeis",
-  "231": "serviceinfo",
-  "232": "endofservices",
-  "233": "service",
-  "234": "servlist",
-  "235": "servlistend",
-  "241": "statslline",
-  "242": "statsuptime",
-  "243": "statsoline",
-  "244": "statshline",
-  "250": "luserconns",
-  "251": "luserclient",
-  "252": "luserop",
-  "253": "luserunknown",
-  "254": "luserchannels",
-  "255": "luserme",
-  "256": "adminme",
-  "257": "adminloc1",
-  "258": "adminloc2",
-  "259": "adminemail",
-  "261": "tracelog",
-  "262": "endoftrace",
-  "263": "tryagain",
-  "265": "n_local",
-  "266": "n_global",
-  "300": "none",
-  "301": "away",
-  "302": "userhost",
-  "303": "ison",
-  "305": "unaway",
-  "306": "nowaway",
-  "311": "whoisuser",
-  "312": "whoisserver",
-  "313": "whoisoperator",
-  "314": "whowasuser",
-  "315": "endofwho",
-  "316": "whoischanop",
-  "317": "whoisidle",
-  "318": "endofwhois",
-  "319": "whoischannels",
-  "321": "liststart",
-  "322": "list",
-  "323": "listend",
-  "324": "channelmodeis",
-  "329": "channelcreate",
-  "331": "notopic",
-  "332": "currenttopic",
-  "333": "topicinfo",
-  "341": "inviting",
-  "342": "summoning",
-  "346": "invitelist",
-  "347": "endofinvitelist",
-  "348": "exceptlist",
-  "349": "endofexceptlist",
-  "351": "version",
-  "352": "whoreply",
-  "353": "namreply",
-  "361": "killdone",
-  "362": "closing",
-  "363": "closeend",
-  "364": "links",
-  "365": "endoflinks",
-  "366": "endofnames",
-  "367": "banlist",
-  "368": "endofbanlist",
-  "369": "endofwhowas",
-  "371": "info",
-  "372": "motd",
-  "373": "infostart",
-  "374": "endofinfo",
-  "375": "motdstart",
-  "376": "endofmotd",
-  "377": "motd2", 
-  "381": "youreoper",
-  "382": "rehashing",
-  "384": "myportis",
-  "391": "time",
-  "392": "usersstart",
-  "393": "users",
-  "394": "endofusers",
-  "395": "nousers",
-  "401": "nosuchnick",
-  "402": "nosuchserver",
-  "403": "nosuchchannel",
-  "404": "cannotsendtochan",
-  "405": "toomanychannels",
-  "406": "wasnosuchnick",
-  "407": "toomanytargets",
-  "409": "noorigin",
-  "411": "norecipient",
-  "412": "notexttosend",
-  "413": "notoplevel",
-  "414": "wildtoplevel",
-  "421": "unknowncommand",
-  "422": "nomotd",
-  "423": "noadmininfo",
-  "424": "fileerror",
-  "431": "nonicknamegiven",
-  "432": "erroneusnickname",
-  "433": "nickinuse",
-  "436": "nickcollision",
-  "437": "unavailresource", # "Nick is temporarily unavailable
-  "439": "toofast",
-  "441": "usernotinchannel",
-  "442": "notonchannel",
-  "443": "useronchannel",
-  "444": "nologin",
-  "445": "summondisabled",
-  "446": "usersdisabled",
-  "451": "notregistered",
-  "461": "needmoreparams",
-  "462": "alreadyregistered",
-  "463": "nopermforhost",
-  "464": "passwdmismatch",
-  "465": "banned",
-  "466": "youwillbebanned",
-  "467": "keyset",
-  "471": "channelisfull",
-  "472": "unknownmode",
-  "473": "inviteonlychan",
-  "474": "bannedfromchan",
-  "475": "badchannelkey",
-  "476": "badchanmask",
-  "477": "nochanmodes", # "Channel doesn't support modes"
-  "478": "banlistfull",
-  "481": "noprivileges",
-  "482": "chanoprivsneeded",
-  "483": "cantkillserver",
-  "484": "restricted", # Connection is restricted
-  "485": "uniqopprivsneeded",
-  "486": "needtoidentify",
-  "491": "nooperhost",
-  "492": "noservicehost",
-  "501": "umodeunknownflag",
-  "502": "usersdontmatch",
   "PRIVMSG": "privmsg",
   "KICK": "kick"
 }
+
+
 connect(address, nick, ident, address[0], realname)
 while True:
     recv()
