@@ -7,42 +7,50 @@ import re
 import shelve
 import datetime
 import sys
+
 #nickname of bot
 nick="quotebot"
 
 #ident server response (could probably set this up in script as well)
 ident="botherd"
+
 #email address of owner
 realname="mailto:optimumtact.junk@gmail.com"
+
 #address of server
 address=("irc.segfault.net.nz", 6667)
+
 #comma seperated list of channels, # are added automatically
 channels={"bots"}
 
 #network params
 #socket for all sending and receiving
 socket
+
 #size of the buffer
 bufsize=1024
+
 #buffer to hold incomplete messages
 incomplete_buffer=""
 
 #message params
 #irc regex to break message down in [prefix] command params* [prefix]
 ircmsg=re.compile(r"(?P<prefix>:\S+ )?(?P<command>(\w+|d{3}))(?P<params>( [^ :]\S*)*)(?P<endprefix> :.*)?")
+
 #replace this with propper logger
 debug=True
 
 linebuf=[] #stores the last bufSize messages from the channel
+
 autorejoin=True #autorejoin on kick
 
 #check for !quotes followed by an irc nick and an optional id
 listquotes=re.compile('^!quotes [A-Za-z_]+ *[0-9]*$')
 quote=re.compile('^!quote [\w+\s?]+$') #check for a !quote followed by a number of words and spaces 
 quitreg=re.compile(nick+':? quit') #check for my nickname followed by a optional colon and then quit
-rejoin_toggle=re.compile(nick+':? autojoin')
 counter=0 #current number of messages remembered
 bufSize=100 #sets the maximum size of the bots channel memory (number of messages remembered)
+
 #open dict storing id's with a single quote attached to each id from file, creating this file if it does not
 #exist
 quoteDict=shelve.open('id_quote_dict', flag='c') 
@@ -96,8 +104,6 @@ def on_privmsg(params, message, source):
     if counter>=bufSize:
       counter=0
   
-
-
 #parse a given irc message with the irc regex and pass it off to handleMessage
 def parseMessage(message):
   global ircmsg
@@ -122,19 +128,6 @@ def parseMessage(message):
       endprefix=endprefix.lstrip(':')
     handleMessage(prefix, command, params, endprefix)
     
-    if debug:
-      print ('----Full Message----')
-      print (message)
-      print ('----Regex----')
-      print (prefix)
-      print (command)
-      print (params)
-      print (endprefix)
-      print('---------------------')
-  else:
-    if debug:
-      print (message)
-    print('ERROR, unknown message passed')
 
 #respond to a given irc message and depatch it to the correct method based on its command/event number
 def handleMessage(prefix, command, params, endprefix):
@@ -276,6 +269,13 @@ def send(line, encode="utf-8"):
   line = line.replace('\r\n', '') + '\r\n'
   socket.send(line.encode(encode))
 
+
+#dict of irc events and commands
+events = {
+  "001": "welcome",
+  "PRIVMSG": "privmsg",
+  "KICK": "kick"
+}
 
 connect(address, nick, ident, address[0], realname)
 while True:
