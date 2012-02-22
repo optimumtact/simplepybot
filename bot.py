@@ -58,6 +58,7 @@ else:
   quoteID=1
   quoteDict['0']=quoteID
 
+#BOT METHODS
 #what to do on server welcome
 def on_welcome():
   global channels
@@ -83,20 +84,12 @@ def on_privmsg(params, message, source):
     if match:
       msg(channel, addQuote(quoteID, match,  source.split('!')[0]))
   
-  #check for a rejoin toggle command
-  elif rejoin_toggle.match(message):
-    global autojoin
-    if autojoin:
-      autojoin=False
-    else:
-      autojoin=True
-
   #check for a quit command 
   elif quitreg.match(message):
     die('Remote User Kill');
   elif message.startswith('!'):
    message=None
-#otherwise put the line into the linebuf and increment counter
+  #otherwise put the line into the linebuf and increment counter
   else:
     linebuf.insert(counter, (params, message, source))
     counter=counter+1
@@ -104,17 +97,6 @@ def on_privmsg(params, message, source):
       counter=0
   
 
-#on a kick determine if I am the one who has been kicked, if so I need to check if autojoin is true
-#and return to the channel
-def on_kick(params, reason, admin):
-  global autorejoin
-  global nick
-  if params[0]==nick:
-    admin=admin.split('!')[0]
-    print('Kicked by admin %s', admin)#TODO replace with logger
-    if autorejoin:
-      #rejoin channel
-      join(params[1])
 
 #parse a given irc message with the irc regex and pass it off to handleMessage
 def parseMessage(message):
@@ -126,14 +108,15 @@ def parseMessage(message):
     if prefix:
       prefix=prefix.lstrip(' ')
       prefix=prefix.lstrip(':')
+
     command=m.group('command')
+
     params=m.group('params')
-  
     if params:
       params=params.lstrip(' ')
       params=params.split(' ')
-      endprefix=m.group('endprefix')
- 
+    
+    endprefix=m.group('endprefix')
     if endprefix:
       endprefix=endprefix.lstrip(' ')
       endprefix=endprefix.lstrip(':')
@@ -164,9 +147,94 @@ def handleMessage(prefix, command, params, endprefix):
     if event=='privmsg':
       on_privmsg(params, endprefix, prefix)
     
-    if event=='kick':
-      on_kick(params, endprefix, prefix)
 
+
+def formatForDisplay(source, message):
+  displaystring=str(datetime.time.strftime('%H:%M')+' <'+source.split('!')[0]+'> '+message
+  return displaystring
+
+#handle reporting of matching quotes
+def findMatches(pattern, channel):
+  global linebuf
+  matchbuf=[]
+  for event in linebuf:
+    print(event)#TODO change over to debugger
+    if re.search(pattern, event[1]):
+      matchbuf.append(formatForDisplay(event[2], event[1]))
+  
+  if (len(matchbuf)>1):
+    msg(channel, 'Too many matches, please refine your search')
+    return None
+  elif (len(matchbuf)>0):
+    return matchbuf[0]#in the case we want to return the match it's always the first one
+  else:
+    msg(channel, 'No matches found')
+    return None
+
+
+#handle insertion of new quote, as well as placing it into the appropriate name and date dicts
+def addQuote(idnum, quote, name):
+  global quoteDict
+  global quoteID
+  quoteDict[str(idnum)]=quote
+  quoteID=quoteID+1
+  return quote
+
+def lookupQuote(id1, id2): 
+  result=[]
+  temp=id1
+  while not temp==id2:
+    if quoteDict.haskey(str(id1)):
+      result.append(quoteDict[str(id1)])
+    temp+=1
+  
+  if len(result)<1:
+    if id1==1d2:
+      print('I have no quote for the id:'+str(id1))
+    else:
+      print('I have no in the range '+str(id1)+'-'+str(id2))
+    return None
+  else:
+    return results
+
+
+#dict of the needed irc events and commands
+events = {
+  "001": "welcome",
+  "PRIVMSG": "privmsg",
+}
+
+#IRC METHODS
+#send a priv msg to the given channel (where channel can be an irc channel or a user
+def msg(channel, message):
+  send('PRIVMSG '+channel+' :'+str(message))
+
+#join all given channels
+def join (channels):
+  global socket
+  for channel in channels:
+    if channel:
+      channel=channel.lstrip('#')
+    send('JOIN #'+channel)
+
+def die (message):
+  global quoteDict
+  global nameDict
+  global quoteID
+  quoteDict['0']=quoteID
+  quoteDict.close()
+  send("QUIT :"+message) 
+  sys.exit(0)
+
+#connect to the server
+def connect(address, nick, ident, server, realname):
+  global socket
+  socket=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+  socket.connect(address)
+  send('NICK '+nick)
+  send('USER '+nick+' '+ident+' '+server+' '+' :'+realname)
+  return server
+#network methods
 #recv up to bufsize data into the socket
 def recv():
   global socket
@@ -208,271 +276,7 @@ def send(line, encode="utf-8"):
   line = line.replace('\r\n', '') + '\r\n'
   socket.send(line.encode(encode))
 
-#send a priv msg to the given channel (where channel can be an irc channel or a user
-def msg(channel, message):
-  send('PRIVMSG '+channel+' :'+str(message))
 
-#join all given channels
-def join (channels):
-  global socket
-  for channel in channels:
-    if channel:
-      channel=channel.lstrip('#')
-    send('JOIN #'+channel)
-
-#connect to the server
-def connect(address, nick, ident, server, realname):
-  global socket
-  socket=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-  socket.connect(address)
-  send('NICK '+nick)
-  send('USER '+nick+' '+ident+' '+server+' '+' :'+realname)
-  return server
-
-# Bot Methods below
-
-def formatForDisplay(source, message):
-  displaystring=str(datetime.date.today())+' <'+source.split('!')[0]+'> '+message
-  return displaystring
-
-#handle reporting of matching quotes
-def findMatches(pattern, channel):
-  global linebuf
-  matchbuf=[]
-  for event in linebuf:
-    print(event)#TODO change over to debugger
-    if re.search(pattern, event[1]):
-      matchbuf.append(formatForDisplay(event[2], event[1]))
-  
-  if (len(matchbuf)>1):
-    msg(channel, 'Too many matches, please refine your search')
-    return None
-  elif (len(matchbuf)>0):
-    return matchbuf[0]#in the case we want to return the match it's always the first one
-  else:
-    msg(channel, 'No matches found')
-    return None
-
-def die (message):
-  global quoteDict
-  global nameDict
-  global quoteID
-  quoteDict['0']=quoteID
-  quoteDict.close()
-  nameDict.close()
-  global address
-  send("QUIT :"+message) 
-  sys.exit(0)
-
-
-#handle insertion of new quote, as well as placing it into the appropriate name and date dicts
-def addQuote(idnum, quote, name):
-  global quoteDict
-  global nameDict
-  global quoteID
-  quoteDict[str(idnum)]=quote
-  
-  if name in nameDict:
-    temp=nameDict[name]
-    temp.append(str(idnum))
-    nameDict[name]=temp
-  else:
-    nameDict[name]=[str(idnum)]
-  print('---addquote---')
-  print (quote)
-  print (name)
-  print (str(idnum))
-  quoteID=quoteID+1
-  return quote
-
-def lookupQuote(reference):
-  global quoteDict
-  global nameDict
-  quotes=''
-  
-  if len(reference)==3:
-    if reference[2] in quoteDict:
-      return quoteDict[reference[2]]
-    else:
-      return 'I do not have a quote with id:'+reference[2]
-  else:
-    if reference[1] not in nameDict :
-      return 'I do not have a user with the name:'+reference[1]+' in the database'
-    ids=nameDict[reference[1]]
-    for quoteid in ids:
-      quotes+=' '+quoteDict[quoteid]
-    return quotes
-
-
-#dict of irc events and commands
-events = {
-  "001": "welcome",
-  "002": "yourhost",
-  "003": "created",
-  "004": "myinfo",
-  "005": "protocols",
-  "006": "map?",
-  "007": "endmap",
-  "008": "snomask",
-  "010": "?",
-  "200": "tracelink",
-  "201": "traceconnecting",
-  "202": "tracehandshake",
-  "203": "traceunknown",
-  "204": "traceoperator",
-  "205": "traceuser",
-  "206": "traceserver",
-  "207": "traceservice",
-  "208": "tracenewtype",
-  "209": "traceclass",
-  "210": "tracereconnect",
-  "211": "statslinkinfo",
-  "212": "statscommands",
-  "213": "statscline",
-  "214": "statsnline",
-  "215": "statsiline",
-  "216": "statskline",
-  "217": "statsqline",
-  "218": "statsyline",
-  "219": "endofstats",
-  "221": "umodeis",
-  "231": "serviceinfo",
-  "232": "endofservices",
-  "233": "service",
-  "234": "servlist",
-  "235": "servlistend",
-  "241": "statslline",
-  "242": "statsuptime",
-  "243": "statsoline",
-  "244": "statshline",
-  "250": "luserconns",
-  "251": "luserclient",
-  "252": "luserop",
-  "253": "luserunknown",
-  "254": "luserchannels",
-  "255": "luserme",
-  "256": "adminme",
-  "257": "adminloc1",
-  "258": "adminloc2",
-  "259": "adminemail",
-  "261": "tracelog",
-  "262": "endoftrace",
-  "263": "tryagain",
-  "265": "n_local",
-  "266": "n_global",
-  "300": "none",
-  "301": "away",
-  "302": "userhost",
-  "303": "ison",
-  "305": "unaway",
-  "306": "nowaway",
-  "311": "whoisuser",
-  "312": "whoisserver",
-  "313": "whoisoperator",
-  "314": "whowasuser",
-  "315": "endofwho",
-  "316": "whoischanop",
-  "317": "whoisidle",
-  "318": "endofwhois",
-  "319": "whoischannels",
-  "321": "liststart",
-  "322": "list",
-  "323": "listend",
-  "324": "channelmodeis",
-  "329": "channelcreate",
-  "331": "notopic",
-  "332": "currenttopic",
-  "333": "topicinfo",
-  "341": "inviting",
-  "342": "summoning",
-  "346": "invitelist",
-  "347": "endofinvitelist",
-  "348": "exceptlist",
-  "349": "endofexceptlist",
-  "351": "version",
-  "352": "whoreply",
-  "353": "namreply",
-  "361": "killdone",
-  "362": "closing",
-  "363": "closeend",
-  "364": "links",
-  "365": "endoflinks",
-  "366": "endofnames",
-  "367": "banlist",
-  "368": "endofbanlist",
-  "369": "endofwhowas",
-  "371": "info",
-  "372": "motd",
-  "373": "infostart",
-  "374": "endofinfo",
-  "375": "motdstart",
-  "376": "endofmotd",
-  "377": "motd2", 
-  "381": "youreoper",
-  "382": "rehashing",
-  "384": "myportis",
-  "391": "time",
-  "392": "usersstart",
-  "393": "users",
-  "394": "endofusers",
-  "395": "nousers",
-  "401": "nosuchnick",
-  "402": "nosuchserver",
-  "403": "nosuchchannel",
-  "404": "cannotsendtochan",
-  "405": "toomanychannels",
-  "406": "wasnosuchnick",
-  "407": "toomanytargets",
-  "409": "noorigin",
-  "411": "norecipient",
-  "412": "notexttosend",
-  "413": "notoplevel",
-  "414": "wildtoplevel",
-  "421": "unknowncommand",
-  "422": "nomotd",
-  "423": "noadmininfo",
-  "424": "fileerror",
-  "431": "nonicknamegiven",
-  "432": "erroneusnickname",
-  "433": "nickinuse",
-  "436": "nickcollision",
-  "437": "unavailresource", # "Nick is temporarily unavailable
-  "439": "toofast",
-  "441": "usernotinchannel",
-  "442": "notonchannel",
-  "443": "useronchannel",
-  "444": "nologin",
-  "445": "summondisabled",
-  "446": "usersdisabled",
-  "451": "notregistered",
-  "461": "needmoreparams",
-  "462": "alreadyregistered",
-  "463": "nopermforhost",
-  "464": "passwdmismatch",
-  "465": "banned",
-  "466": "youwillbebanned",
-  "467": "keyset",
-  "471": "channelisfull",
-  "472": "unknownmode",
-  "473": "inviteonlychan",
-  "474": "bannedfromchan",
-  "475": "badchannelkey",
-  "476": "badchanmask",
-  "477": "nochanmodes", # "Channel doesn't support modes"
-  "478": "banlistfull",
-  "481": "noprivileges",
-  "482": "chanoprivsneeded",
-  "483": "cantkillserver",
-  "484": "restricted", # Connection is restricted
-  "485": "uniqopprivsneeded",
-  "486": "needtoidentify",
-  "491": "nooperhost",
-  "492": "noservicehost",
-  "501": "umodeunknownflag",
-  "502": "usersdontmatch",
-  "PRIVMSG": "privmsg",
-  "KICK": "kick"
-}
 connect(address, nick, ident, address[0], realname)
 while True:
     recv()
