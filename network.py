@@ -82,3 +82,29 @@ def getMessages():
   return results
 
 
+def parseMessage(message):
+  global ircmsg
+  global debug
+  m=ircmsg.match(message)
+  if m:
+    prefix=m.group('prefix')
+    if prefix:
+      prefix=prefix.lstrip(' ', ':')
+
+    command=m.group('command')
+    
+    params=m.group('params')
+    if params:
+      params=params.lstrip(' ')
+      params=params.split(' ')
+
+    endprefix=m.group('endprefix')
+    if endprefix:
+      endprefix=endprefix.strip(' ')
+      endprefix=endprefix.lstrip(':')
+
+    return (prefix, command, params, endprefix)
+
+  return None
+
+

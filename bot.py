@@ -85,14 +85,6 @@ def findMatches(pattern, channel):
     msg(channel, 'No matches found')
     return None
 
-def start():
-  address=bot.address
-  net.connect(address, bot.nick, bot.ident, bot.host, bot.realname)
-  while True:
-    split_data=net.getMessages()
-    for line in split_data:
-      if 'PING' in line:
-        result=line.split(' ')
         
 #parse a given irc message with the irc regex and pass it off to handleMessage
 def parseMessage(message):
@@ -131,4 +123,16 @@ def handleMessage(prefix, command, params, endprefix):
     if event=='privmsg':
       bot.on_privmsg(params, endprefix, prefix)
 
+def start():
+  address=bot.address
+  net.connect(address, bot.nick, bot.ident, bot.host, bot.realname)
+  while True:
+    split_data=net.getMessages()
+    for line in split_data:
+      if 'PING' in line:
+        result=line.split(' ')
+        net.send('PONG '+result[1]
+      else:
+        parseMessage(line)
+    
 start()
