@@ -8,11 +8,6 @@ socket
 bufsize=4096
 
 #dict of irc events and commands
-events = {
-  "001": "welcome",
-  "PRIVMSG": "privmsg",
-  "KICK": "kick"
-}
 
 #IRC METHODS
 #send a priv msg to the given channel (where channel can be an irc channel or a user
@@ -31,9 +26,9 @@ def join (channels):
       channel=channel.lstrip('#')
       send('JOIN #'+channel)
 
-def die (message):
-  bot.quote_dict['0']=bot.quote_id
-  bot.quote_dict.close()
+def die (message, quote_dict, quote_id):
+  quote_dict['0']=quote_id
+  quote_dict.close()
   send("QUIT :"+message) 
   sys.exit(0)
 
@@ -53,8 +48,7 @@ def recv():
   global bufsize
   d = socket.recv(bufsize)
   data=d.decode('utf-8', 'replace')
-  if data:
-    process_data(data)
+  return data
 
 #process the decoded data from the socket, splitting out complete messages and
 #storing any incomplete messages in the incomplete buffer
@@ -70,14 +64,7 @@ def process_data(data):
   else:
     split_data=data.split('\r\n')#this handles the case where the last message in data may be incomplete
     incomplete_buffer=split_data.pop(-1)
-  for line in split_data:
-    if line:
-      if line.startswith('PING'):#automatically respond to pings
-        parameters= line.split()
-        pong='PONG '+parameters[1]
-        send(pong)
-        return
-      parseMessage(line)
+  return split_data
 
 #encode a line from utf-8 into bytes and strip all linebreaks
 #add linebreaks as required by rfc 1459
@@ -90,42 +77,8 @@ def send(line, encode="utf-8"):
 
 #start receiving messages from socket
 def getMessages():
-  recv()
-
-#parse a given irc message with the irc regex and pass it off to handleMessage
-def parseMessage(message):
-  global ircmsg
-  global debug
-  m=ircmsg.match(message)
-  if m:
-    prefix=m.group('prefix')
-    if prefix:
-      prefix=prefix.lstrip(' ')
-      prefix=prefix.lstrip(':')
-
-    command=m.group('command')
-
-    params=m.group('params')
-    if params:
-      params=params.lstrip(' ')
-      params=params.split(' ')
-
-    endprefix=m.group('endprefix')
-    if endprefix:
-      endprefix=endprefix.lstrip(' ')
-      endprefix=endprefix.lstrip(':')
-      handleMessage(prefix, command, params, endprefix)
-
-
-#respond to a given irc message and depatch it to the correct method based on its command/event number
-def handleMessage(prefix, command, params, endprefix):
-  global events
-  if command  in events:
-    event=events[command]
-    if event=='welcome':
-      bot.on_welcome()
-
-    if event=='privmsg':
-      bot.on_privmsg(params, endprefix, prefix)
+  data=recv()
+  result=process_data(data)
+  return results
 
 

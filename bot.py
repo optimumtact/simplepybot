@@ -86,8 +86,49 @@ def findMatches(pattern, channel):
     return None
 
 def start():
-  net.connect(bot.address, bot.nick, bot.ident, bot.host, bot.realname)
+  address=bot.address
+  net.connect(address, bot.nick, bot.ident, bot.host, bot.realname)
   while True:
-    net.getMessages()
+    split_data=net.getMessages()
+    for line in split_data:
+      if 'PING' in line:
+        result=line.split(' ')
+        
+#parse a given irc message with the irc regex and pass it off to handleMessage
+def parseMessage(message):
+  global ircmsg
+  global debug
+  m=ircmsg.match(message)
+  if m:
+    prefix=m.group('prefix')
+    if prefix:
+      prefix=prefix.lstrip(' ')
+      prefix=prefix.lstrip(':')
+
+    command=m.group('command')
+
+    params=m.group('params')
+    if params:
+      params=params.lstrip(' ')
+      params=params.split(' ')
+
+    endprefix=m.group('endprefix')
+    if endprefix:
+      endprefix=endprefix.lstrip(' ')
+      endprefix=endprefix.lstrip(':')
+
+    handleMessage(prefix, command, params, endprefix)    
+
+
+#respond to a given irc message and depatch it to the correct method based on its command/event number
+def handleMessage(prefix, command, params, endprefix):
+  global events
+  if command  in events:
+    event=events[command]
+    if event=='welcome':
+      bot.on_welcome()
+
+    if event=='privmsg':
+      bot.on_privmsg(params, endprefix, prefix)
 
 start()
