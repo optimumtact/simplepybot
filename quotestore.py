@@ -73,3 +73,11 @@ add_quote(quote, use_unused_id=True):
     #append quote to end of quote list and return it's id
     quote_list.append(quote)
     return len(quote_list)-1
+
+#set the quote linked to quote_id to none and return the old quote to the caller
+remove_quote(quote_id):
+  global quote_list
+  old_quote=quote_list[quote_id]
+  quote_list[quote_id]=None
+  add_unused_id(quote_id)
+  return old_quote
