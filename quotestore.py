@@ -1,7 +1,7 @@
 #position of each part of a quote
 time=0
 name=1
-quote=2
+quotepos=2
 
 #dictionary of names storing the id's of each name
 name_dictionary=dict()
@@ -90,3 +90,19 @@ remove_quote(quote_id):
   remove_name_mapping(old_quote[name], quote_id)
   add_unused_id(quote_id)
   return old_quote
+
+#given a file, return a single quote in the form (time, name, quote)
+parse_line(f):
+  f.readline()
+  time=f.readline()
+  name=f.readline()
+  quote=f.readline()
+  f.readline()
+  return (time, name, quote)
+
+#format a given quote into a string suitable for display
+format_quote_for_display(quote):
+  global name
+  global time
+  global quotepos
+  return '['+quote[time]+'] <'+quote[name]+'> :'+quote[quotepos]
