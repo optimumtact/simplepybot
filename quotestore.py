@@ -1,5 +1,7 @@
-#position of name
+#position of each part of a quote
+time=0
 name=1
+quote=2
 
 #dictionary of names storing the id's of each name
 name_dictionary=dict()
@@ -41,6 +43,11 @@ add_name_mapping(name, list_id):
 
   return true
 
+#remove a given name->list_id mapping
+remove_name_mapping(name, list_id):
+  global name_dictionary
+  name_dictionary[name].remove(quote_id)
+
 #add the unused_id to the global unused_id's list
 add_unused_id(unused_id):
   global unused_id_list
@@ -77,7 +84,9 @@ add_quote(quote, use_unused_id=True):
 #set the quote linked to quote_id to none and return the old quote to the caller
 remove_quote(quote_id):
   global quote_list
+  global name
   old_quote=quote_list[quote_id]
   quote_list[quote_id]=None
+  remove_name_mapping(old_quote[name], quote_id)
   add_unused_id(quote_id)
   return old_quote
