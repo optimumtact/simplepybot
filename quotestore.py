@@ -23,7 +23,7 @@ def initalise(filename):
     line=parseLine(f)
     if line:
       add_name_mapping(line[name])
-      add_quote(line, count)
+      add_quote(line, False)
      
     else:
       add_unused_id(count)
@@ -55,11 +55,15 @@ get_unused_id():
   else:
     return None
 
-#add a quote to the global quote_list
-add_quote(quote):
+#add a quote to the global quote_list, if use_unused_id is false then it will not attempt to fill
+#empty spaces in the quote_list
+add_quote(quote, use_unused_id=True):
   global quote_list
-  #attempt to grab any unused ID's in the quote_list
-  spare_id=get_unused_id()
+  spare_id=None
+  if use_unused_id:
+    #attempt to grab any unused ID's in the quote_list
+    spare_id=get_unused_id()
+
   if spare_id:
     #fill the unused space and return it's id
     quote_list[spare_id]=quote
