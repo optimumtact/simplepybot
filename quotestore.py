@@ -107,14 +107,45 @@ get_quotes_by_name(name):
 
   return local_quotes
 
-#given a file, return a single quote in the form (time, name, quote)
+#write all saved quotes out to file
+flush(filename):
+  global quote_list
+  for line in quote_list:
+    result+=format_quote_for_storage(line)
+  store_quotes_in_file(result, filename)
+
+#given a file, return a single quote in the form (time, name, quote) or a None for a blank space
 parse_line(f):
-  f.readline()
-  time=f.readline()
-  name=f.readline()
-  quote=f.readline()
-  f.readline()
-  return (time, name, quote)
+  head=f.readline()
+  if head=='[Quote]':
+    time=f.readline()
+    name=f.readline()
+    quote=f.readline()
+    return (time, name, quote)
+  else:
+    return None
+
+#store a list of quotes the file given by filename
+store_quotes_in_file(quotes, filename):
+  f=open(filename, 'w')
+  f.writelines(quotes)
+  return true
+
+#return a quote split into a list of lines for storing into a flat file
+format_quote_for_storage(quote):
+  global name
+  global time
+  global quotepos
+  result=None
+  if quote:
+    result=['[Quote]\n']
+    result.append(quote[name]+'\n')
+    result.append(quote[time]+'\n')
+    result.append(quote[quotepos]+'\n')
+    return result
+  else:
+    result=['[Null Quote]\n']
+    return result
 
 #format a given quote into a string suitable for display
 format_quote_for_display(quote):
