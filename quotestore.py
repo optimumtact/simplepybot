@@ -91,6 +91,22 @@ remove_quote(quote_id):
   add_unused_id(quote_id)
   return old_quote
 
+#find and return the quote whose id is quote_id
+get_quote(quote_id):
+  global quote_list
+  return quote_list[quote_id]
+
+#return a list of all quotes associated with the name name
+get_quotes_by_name(name):
+  global name_dictionary
+  global quote_list
+  local_quotes=[]
+  quote_ids=name_dictionary[name]
+  for quote_id in quote_ids:
+    local_quotes.append(quote_list[quote_id])
+
+  return local_quotes
+
 #given a file, return a single quote in the form (time, name, quote)
 parse_line(f):
   f.readline()
