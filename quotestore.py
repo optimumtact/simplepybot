@@ -13,9 +13,14 @@ quote_list=[]
 #quotes should prefer to fill these first
 unused_id_list=[]
 
-def initalise(filename):
+#defines the maximum number of quotes to store, default is -1 which is no limit
+max_quotes=0
+
+def initalise(filename, maximum_quotes_to_store=-1):
   #local variables
   global name
+  global max_quotes
+  max_quotes=maximum_quotes_to_store
   f=open(filename)
   lines=f.readlines()
   
@@ -63,9 +68,13 @@ get_unused_id():
     return None
 
 #add a quote to the global quote_list, if use_unused_id is false then it will not attempt to fill
-#empty spaces in the quote_list
+#empty spaces in the quote_list, will return -1 if the maximum number of quotes to store is hit
 add_quote(quote, use_unused_id=True):
   global quote_list
+  global max_quotes
+  if max_quotes<=len(quotelist):
+    return -1
+
   spare_id=None
   if use_unused_id:
     #attempt to grab any unused ID's in the quote_list
