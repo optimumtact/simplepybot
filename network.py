@@ -54,3 +54,14 @@ def msg_all(channels, message):
 #quit message
 def kill(message):
   send("QUIT :"+message)
+
+#leave the given channel with a leave message given by message
+def leave(channel, message):
+  send('check what this is')#TODO: fixme
+
+#wrapper for leave that will leave all channels in the list given
+def leave_all(channels, message):
+  for channel in channels:
+    leave(channel, message)
+
+
