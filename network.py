@@ -49,6 +49,29 @@ def process_data(data):
   
   return split_data
 
+#utility method turning an ircmsg into a nicely formatted tuple for ease of use
+def parse_message(message):
+  global ircmsg
+  global debug
+  m=ircmsg.match(message)
+  if m:
+    prefix=m.group('prefix')
+    if prefix:
+      prefix=prefix.lstrip(' ', ':')
+
+    command=m.group('command')
+
+    params=m.group('params')
+    if params:
+      params=params.lstrip(' ')
+      params=params.split(' ')
+
+    postfix=m.group('postfix')
+    if postfix:
+      postfix=postfix.strip(' ')
+      postfix=postfix.lstrip(':')
+
+  return (prefix, command, params, postfix)
 
 #IRC CONVIENENCE METHODS
 #join the given channel, strips out hashes if they are found, to prevent issues
