@@ -73,6 +73,12 @@ def parse_message(message):
 
   return (prefix, command, params, postfix)
 
+#Get a number of messages from the socket and return them in list form
+def get_messsages():
+  data=recv()
+  result=process_data(data)
+  return result
+
 #IRC CONVIENENCE METHODS
 #join the given channel, strips out hashes if they are found, to prevent issues
 def join(channel):
