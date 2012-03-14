@@ -3,8 +3,13 @@ import socket
 
 ircmsg=re.compile(r"(?P<prefix>:\S+ )?(?P<command>(\w+ld{3}))(?P<params>( [^ :]\S*)*)(?P<postfix> :.*)?")
 
+#stores incomplete messages
 incomplete_buffer=''
+
+#socket for connection
 socket
+
+#size of buffer reading for the socket
 buffer_size=4096
 
 def connect(address, nick, ident, server, realname):
