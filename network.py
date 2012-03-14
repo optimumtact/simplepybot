@@ -50,4 +50,7 @@ def msg_all(channels, message):
   for channel in channels:
     send(channel, message)
 
-
+#kill your connection to the server with the given message being sent as your
+#quit message
+def kill(message):
+  send("QUIT :"+message)
