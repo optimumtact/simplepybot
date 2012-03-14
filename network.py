@@ -4,7 +4,6 @@ import socket
 ircmsg=re.compile(r"(?P<prefix>:\S+ )?(?P<command>(\w+ld{3}))(?P<params>( [^ :]\S*)*)(?P<postfix> :.*)?")
 
 incomplete_buffer=''
-message_queue=[]
 socket
 buffer_size=4096
 
@@ -31,6 +30,27 @@ def recv():
   data=d.decode('utf-8', 'replace')
   return data
 
+
+#read a stream of data, splitting it into messages seperated by \r\n and storing
+#the last incomplete message (if any) in the incomplete buffer variable to be
+#used in the next read of the data stream
+def process_data(data):
+  global incomplete_buffer
+  if incomplete_buffer:
+    data=incomplete_buffer+data
+    incomplete_buffer=''
+  
+  if data[-2:] is '\r\n':
+    split_data=data.split('\r\n')
+  
+  else:
+    split_data=data.split('\r\n')
+    incomplete_buffer=split_data.pop(-1)
+  
+  return split_data
+
+
+#IRC CONVIENENCE METHODS
 #join the given channel, strips out hashes if they are found, to prevent issues
 def join(channel):
   channel=channel.lstrip('#')
