@@ -21,7 +21,8 @@ def initalise(filename, maximum_quotes_to_store=-1):
   global name
   global max_quotes
   max_quotes=maximum_quotes_to_store
-  f=open(filename)
+  #TODO make this support when there is no file to be opened
+  f=open(filename, 'r')
   lines=f.readlines()
   
   #loop through the file and read and parse each line adding it to the appropriate lists
@@ -35,7 +36,7 @@ def initalise(filename, maximum_quotes_to_store=-1):
     else:
       add_unused_id(count)
 
-    count++
+    count+=1
 
 #if the given name exists in the dictionary then add that name->list_id mapping, if it doesn't then
 #add the name to the dictionary and set up its id list with the given list_id
@@ -72,9 +73,9 @@ def get_unused_id():
 def add_quote(quote, use_unused_id=True):
   global quote_list
   global max_quotes
+  global name
   if max_quotes<=len(quotelist):
     return -1
-
   spare_id=None
   if use_unused_id:
     #attempt to grab any unused ID's in the quote_list
@@ -83,11 +84,13 @@ def add_quote(quote, use_unused_id=True):
   if spare_id:
     #fill the unused space and return it's id
     quote_list[spare_id]=quote
+    add_name_mapping(quote[name], spare_id)
     return spare_id
   
   else:
     #append quote to end of quote list and return it's id
     quote_list.append(quote)
+    add_name_mapping(quote[name], len(quote_list)-1)
     return len(quote_list)-1
 
 #set the quote linked to quote_id to none and return the old quote to the caller

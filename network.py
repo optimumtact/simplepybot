@@ -82,7 +82,10 @@ def parse_message(message):
 def get_messsages():
   data=recv()
   result=process_data(data)
-  return result
+  clean=[]
+  for line in result:
+    clean.append(parse_message(line))
+  return clean
 
 #IRC CONVIENENCE METHODS
 #join the given channel, strips out hashes if they are found, to prevent issues
