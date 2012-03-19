@@ -28,7 +28,7 @@ def initalise(filename, maximum_quotes_to_store=-1):
   #loop through the file and read and parse each line adding it to the appropriate lists
   count=0
   while f.readable():
-    line=parseLine(f)
+    line=parse_line(f)
     if line:
       add_name_mapping(line[name])
       add_quote(line, False)
@@ -58,7 +58,7 @@ def remove_name_mapping(name, list_id):
 def add_unused_id(unused_id):
   global unused_id_list
   unused_id_list.append(unused_id)
-  return true
+  return True
 
 #get an unused_id, method returns None if no id's are spare
 def get_unused_id():
