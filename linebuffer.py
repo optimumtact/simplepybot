@@ -72,15 +72,15 @@ def add_line_to_channel(channel, line):
 def find_lines(channel_name, regex):
   global channel_dictionary
   if channel in channel_dictionary:
-    matches = find_lines_in_channel(channel_dictionary[channel].lines)
+    matches = find_lines_in_channel(channel_dictionary[channel])
     return Matches
   else:
     return None
 
 
-def find_lines_in_channel(lines, regex):
+def find_lines_in_channel(channel, regex):
   result = []    
-  for line in lines:
+  for line in channel.lines:
     if regex.matches(line):
       result.append(line)
 
