@@ -3,8 +3,19 @@ import configparser
 import network
 import linebuffer as lb
 import quotestore
+import re
+
 nick = None
 channels = None
+
+#Find command regex
+find_quote_single=re.compile('^!quotes? find [0-9]+$')
+find_quote_range=re.compile('^!quotes? find [0-9]+ [0-9]+$')
+find_quote_name=re.compile('^!quotes? find [A-Za-z_]+$')
+
+#add command regex
+add_quote_msg=re.compile('^!quote add [\w+\s?]+$')
+add_quote_user=re.compile('^!quote add <[@+]?[A-Za-z_]+ [\w+\s?]+$')
 
 def read_file(filename):
   config = configparser.ConfigParser()
@@ -56,10 +67,30 @@ def on_welcome():
   network.joinall(channels)
 
 def on_privmsg(params, message, source):
+  global find_quote_single
+  global find_quote_range
+  global find_quote_name
+  global add_quote_msg
+  global add_quote_user
   channel = params[0]
   result = message.split(' ')
-  if False:
-    print('temporary')
+  if find_quote_single.match(message):
+    print('find single')
+
+  elif find_quote_range.match(message):
+    print('find range')
+  
+  elif find_quote_name.match(message):
+    print('find name')
+  
+  elif add_quote_msg.match(messsage):
+    print('add quote message')
+
+  elif add_quote_user.match(message):
+    print('add quote by user')
+
+  elif message.starts_with('!'):
+    print('ignore malformed commands')
 
   else:
     lb.add_line(channel, (prefix, command, params, endprefix))
