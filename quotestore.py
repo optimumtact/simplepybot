@@ -1,7 +1,7 @@
 #position of each part of a quote
-time = 0
-name = 1
-quotepos = 2
+time = 3
+name = 2
+quotepos = 1
 
 #dictionary of names storing the id's of each name
 name_dictionary = dict()

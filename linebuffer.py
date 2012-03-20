@@ -2,6 +2,10 @@ import re
 channel_dictionary=dict()
 max_channels=None
 buffer_size=20
+#tuple position integers
+name=0
+name=1
+time=2
 
 #allows me to use this class like a Struct and assign it arbitrary values
 #using this to store counts associated with each line without nasty line counts
@@ -46,7 +50,7 @@ def remove_channel(channel_name):
     del channel_dictionary[channel_name]
     return True
 
-def add_line(channel_name, line):
+def add_line(channel_name, line, name, time):
   global channel_dictionary
   #this will add the channel if it does not yet exist
   add_channel(channel_name)
@@ -55,17 +59,17 @@ def add_line(channel_name, line):
   channel = channel_dictionary[channel_name]
 
   #now we append the line to the channel
-  add_line_to_channel(channel, line)
+  add_line_to_channel(channel, line, name, time)
 
 
-def add_line_to_channel(channel, line):
+def add_line_to_channel(channel, line, name, time):
   global buffer_size
   count = channel.count
 
   if count >= buffer_size:
     count = 0
 
-  channel.lines[count] = line
+  channel.lines[count] = (line, name, time)
   count = count + 1
   channel.count = count
 
@@ -73,16 +77,17 @@ def add_line_to_channel(channel, line):
 def find_lines(channel_name, regex):
   global channel_dictionary
   if channel in channel_dictionary:
-    matches = find_lines_in_channel(channel_dictionary[channel])
+    matches = find_lines_in_channel(channel_dictionary[channel], regex)
     return Matches
   else:
     return None
 
 
 def find_lines_in_channel(channel, regex):
+  global message
   result = []    
   for line in channel.lines:
-    if regex.matches(line):
+    if regex.matches(line(message)):
       result.append(line)
 
     return result
