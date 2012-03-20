@@ -5,6 +5,9 @@ import linebuffer as lb
 import quotestore
 import re
 from datetime import datetime
+import logging
+
+logging.basicConfig(filename='quotebot.log', level=logging.Debug)
 nick = None
 channels = None
 
@@ -18,14 +21,16 @@ add_quote_msg=re.compile('^!quote add [\w+\s?]+$')
 add_quote_user=re.compile('^!quote add <[@+]?[A-Za-z_]+ [\w+\s?]+$')
 
 def read_file(filename):
+  logging.info('Reading file:' + filename)
   config = configparser.ConfigParser()
   config.read(filename)
+  logging.info('Done')
   return config
 
 def start():
   global nick
   global channels
-
+  logging.info('Intialising bot')
   config_file = 'example.cfg'
   config = read_file(config_file)
   
@@ -48,6 +53,7 @@ def start():
   lb.intialise()
 
   network.connect((host, port), nick, ident, host, realname)
+  logging.info('Finished Intialisation')
 
 def handle_messages(messsages):
   for message in messages:
@@ -95,6 +101,7 @@ def on_privmsg(params, message, source):
   else:
     now=datetime.today()
     timestamp=now.strftime('[%H:%M]')
+    logging.debug(str.format('Adding line to linebuffer - ({0}, {1}, {2}, {3}', channel, message, source, timestamp))
     lb.add_line(channel, message, source, timestamp)n
 
 
