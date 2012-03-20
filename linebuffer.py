@@ -19,14 +19,15 @@ def intialise( max_buffer_size=-1, max_channel_size=-1):
 
 def add_channel(channel_name):
   global max_channels
+  global channel_dictionary
+
   if len(channel_dictionary) >= max_channels:
     return False
 
-  global channel_dictionary
   global buffer_size
   if channel not in channel_dictionary:
     #intialise the channel with it's message count value
-    temp = new Store()
+    temp = Store()
     temp.count =0
     temp.lines = []
     channel_dictionary[channel] = temp
