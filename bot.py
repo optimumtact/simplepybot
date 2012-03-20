@@ -4,7 +4,7 @@ import network
 import linebuffer as lb
 import quotestore
 import re
-
+from datetime import datetime
 nick = None
 channels = None
 
@@ -93,7 +93,9 @@ def on_privmsg(params, message, source):
     print('ignore malformed commands')
 
   else:
-    lb.add_line(channel, (prefix, command, params, endprefix))
+    now=datetime.today()
+    timestamp=now.strftime('[%H:%M]')
+    lb.add_line(channel, message, source, timestamp)n
 
 
 
