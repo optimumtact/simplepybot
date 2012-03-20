@@ -119,6 +119,23 @@ def get_quotes_by_name(name):
 
   return local_quotes
 
+#find and return a list of quotes in the given range
+def get_quote_range(start_id, end_id):
+  global quote_list
+  #if we have a bad range input we return them Nothing!
+  if end_id - start_id < 0:
+    return None
+  result=[]
+  for quote_id in range(start_id, end_id):
+    try:
+      #if the quote is not None
+      if quote_list[quote_id]:
+        result.append(quote_list[quote_id])
+    
+    #if we run out of items in the list then we are done
+    except IndexError:
+      break
+
 #write all saved quotes out to file
 def flush(filename):
   global quote_list
