@@ -1,34 +1,34 @@
 #position of each part of a quote
-time=0
-name=1
-quotepos=2
+time = 0
+name = 1
+quotepos = 2
 
 #dictionary of names storing the id's of each name
-name_dictionary=dict()
+name_dictionary = dict()
 
 #list of quotes, location in the list is the quotes id number
-quote_list=[]
+quote_list = []
 
 #list of unused_id's, this corresponds to spaces left in the quote_list from deletions, adding
 #quotes should prefer to fill these first
-unused_id_list=[]
+unused_id_list = []
 
 #defines the maximum number of quotes to store, default is -1 which is no limit
-max_quotes=0
+max_quotes = 0
 
 def initalise(filename, maximum_quotes_to_store=-1):
   #local variables
   global name
   global max_quotes
-  max_quotes=maximum_quotes_to_store
+  max_quotes = maximum_quotes_to_store
   #TODO make this support when there is no file to be opened
-  f=open(filename, 'r')
-  lines=f.readlines()
+  f = open(filename, 'r')
+  lines = f.readlines()
   
   #loop through the file and read and parse each line adding it to the appropriate lists
-  count=0
+  count = 0
   while f.readable():
-    line=parse_line(f)
+    line = parse_line(f)
     if line:
       add_name_mapping(line[name])
       add_quote(line, False)
@@ -63,7 +63,7 @@ def add_unused_id(unused_id):
 #get an unused_id, method returns None if no id's are spare
 def get_unused_id():
   global unused_id_list
-  if len(unused_id_list)>0:
+  if len(unused_id_list) > 0:
     return unused_id_list.pop(1)
   else:
     return None
@@ -74,7 +74,7 @@ def add_quote(quote, use_unused_id=True):
   global quote_list
   global max_quotes
   global name
-  if max_quotes<=len(quotelist):
+  if max_quotes <= len(quotelist):
     return -1
   spare_id=None
   if use_unused_id:
@@ -83,22 +83,22 @@ def add_quote(quote, use_unused_id=True):
 
   if spare_id:
     #fill the unused space and return it's id
-    quote_list[spare_id]=quote
+    quote_list[spare_id] = quote
     add_name_mapping(quote[name], spare_id)
     return spare_id
   
   else:
     #append quote to end of quote list and return it's id
     quote_list.append(quote)
-    add_name_mapping(quote[name], len(quote_list)-1)
-    return len(quote_list)-1
+    add_name_mapping(quote[name], len(quote_list) - 1)
+    return len(quote_list) - 1
 
 #set the quote linked to quote_id to none and return the old quote to the caller
 def remove_quote(quote_id):
   global quote_list
   global name
   old_quote=quote_list[quote_id]
-  quote_list[quote_id]=None
+  quote_list[quote_id] = None
   remove_name_mapping(old_quote[name], quote_id)
   add_unused_id(quote_id)
   return old_quote
@@ -112,8 +112,8 @@ def get_quote(quote_id):
 def get_quotes_by_name(name):
   global name_dictionary
   global quote_list
-  local_quotes=[]
-  quote_ids=name_dictionary[name]
+  local_quotes = []
+  quote_ids = name_dictionary[name]
   for quote_id in quote_ids:
     local_quotes.append(quote_list[quote_id])
 
@@ -123,23 +123,23 @@ def get_quotes_by_name(name):
 def flush(filename):
   global quote_list
   for line in quote_list:
-    result+=format_quote_for_storage(line)
+    result += format_quote_for_storage(line)
   store_quotes_in_file(result, filename)
 
 #given a file, return a single quote in the form (time, name, quote) or a None for a blank space
 def parse_line(f):
-  head=f.readline()
-  if head=='[Quote]':
-    time=f.readline()
-    name=f.readline()
-    quote=f.readline()
+  head = f.readline()
+  if head is '[Quote]':
+    time = f.readline()
+    name = f.readline()
+    quote = f.readline()
     return (time, name, quote)
   else:
     return None
 
 #store a list of quotes the file given by filename
 def store_quotes_in_file(quotes, filename):
-  f=open(filename, 'w')
+  f = open(filename, 'w')
   f.writelines(quotes)
   return true
 
@@ -148,15 +148,15 @@ def format_quote_for_storage(quote):
   global name
   global time
   global quotepos
-  result=None
+  result = None
   if quote:
-    result=['[Quote]\n']
+    result = ['[Quote]\n']
     result.append(quote[name]+'\n')
     result.append(quote[time]+'\n')
     result.append(quote[quotepos]+'\n')
     return result
   else:
-    result=['[Null Quote]\n']
+    result = ['[Null Quote]\n']
     return result
 
 #format a given quote into a string suitable for display
@@ -164,4 +164,4 @@ def format_quote_for_display(quote):
   global name
   global time
   global quotepos
-  return '['+quote[time]+'] <'+quote[name]+'> :'+quote[quotepos]
+  return '[' + quote[time] + '] <' + quote[name] + '> :' + quote[quotepos]

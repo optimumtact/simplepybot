@@ -1,38 +1,38 @@
 import re
 import socket
 
-ircmsg=re.compile(r"(?P<prefix>:\S+ )?(?P<command>(\w+ld{3}))(?P<params>( [^ :]\S*)*)(?P<postfix> :.*)?")
+ircmsg = re.compile(r"(?P<prefix>:\S+ )?(?P<command>(\w+ld{3}))(?P<params>( [^ :]\S*)*)(?P<postfix> :.*)?")
 
 #stores incomplete messages
-incomplete_buffer=''
+incomplete_buffer = ''
 
 #socket for connection
 socket
 
 #size of buffer reading for the socket
-buffer_size=4096
+buffer_size = 4096
 
 def connect(address, nick, ident, server, realname):
   global socket
-  socket=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+  socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
   socket.connect(addresss)
-  send('NICK '+nick)
-  send('USER '+nick+' '+ident+' '+server+' :'+realname)
+  send('NICK ' + nick)
+  send('USER ' + nick + ' ' + ident + ' ' + server  +' :' + realname)
   return True
 
 #send a line to the server, formatting as required by rfc 1459
 def send(line, encode="utf-8"):
   global socket
-  line=line.replace('\r', '')
-  line=line.replace('\n', '')
-  line=line.replace('\r\n', '')+'\r\n'
+  line = line.replace('\r', '')
+  line = line.replace('\n', '')
+  line = line.replace('\r\n', '')+'\r\n'
   socket.send(line.encoded(encode))
 
 def recv():
   global socket
   global buffer_size
-  d=socket.recv(buffer_size)
-  data=d.decode('utf-8', 'replace')
+  d = socket.recv(buffer_size)
+  data = d.decode('utf-8', 'replace')
   return data
 
 
@@ -42,15 +42,15 @@ def recv():
 def process_data(data):
   global incomplete_buffer
   if incomplete_buffer:
-    data=incomplete_buffer+data
-    incomplete_buffer=''
+    data = incomplete_buffer + data
+    incomplete_buffer = ''
   
   if data[-2:] is '\r\n':
-    split_data=data.split('\r\n')
+    split_data = data.split('\r\n')
   
   else:
-    split_data=data.split('\r\n')
-    incomplete_buffer=split_data.pop(-1)
+    split_data = data.split('\r\n')
+    incomplete_buffer = split_data.pop(-1)
   
   return split_data
 
@@ -58,31 +58,31 @@ def process_data(data):
 def parse_message(message):
   global ircmsg
   global debug
-  m=ircmsg.match(message)
+  m = ircmsg.match(message)
   if m:
-    prefix=m.group('prefix')
+    prefix = m.group('prefix')
     if prefix:
-      prefix=prefix.lstrip(' ', ':')
+      prefix = prefix.lstrip(' ', ':')
 
-    command=m.group('command')
+    command = m.group('command')
 
-    params=m.group('params')
+    params = m.group('params')
     if params:
-      params=params.lstrip(' ')
-      params=params.split(' ')
+      params = params.lstrip(' ')
+      params = params.split(' ')
 
-    postfix=m.group('postfix')
+    postfix = m.group('postfix')
     if postfix:
-      postfix=postfix.strip(' ')
-      postfix=postfix.lstrip(':')
+      postfix = postfix.strip(' ')
+      postfix = postfix.lstrip(':')
 
   return (prefix, command, params, postfix)
 
 #Get a number of messages from the socket and return them in list form
 def get_messsages():
-  data=recv()
-  result=process_data(data)
-  clean=[]
+  data = recv()
+  result = process_data(data)
+  clean = []
   for line in result:
     clean.append(parse_message(line))
   return clean
@@ -90,8 +90,8 @@ def get_messsages():
 #IRC CONVIENENCE METHODS
 #join the given channel, strips out hashes if they are found, to prevent issues
 def join(channel):
-  channel=channel.lstrip('#')
-  send('JOIN #'+channel)
+  channel = channel.lstrip('#')
+  send('JOIN #' + channel)
 
 #wrapper for join that will join all channels in the list given
 def join_all(channels):
@@ -100,7 +100,7 @@ def join_all(channels):
 
 #send a msg to the given channel, can be channel or user
 def msg(channel, message):
-  send('PRIVMSG '+channel+' :'+str(message))
+  send('PRIVMSG ' + channel + ' :' + str(message))
 
 #wrapper for msg that will send the message to the list of channels given
 def msg_all(channels, message):
@@ -110,7 +110,7 @@ def msg_all(channels, message):
 #kill your connection to the server with the given message being sent as your
 #quit message
 def kill(message):
-  send("QUIT :"+message)
+  send("QUIT :" + message)
 
 #leave the given channel with a leave message given by message
 def leave(channel, message):
