@@ -4,6 +4,10 @@ max_channels=None
 buffer_size=20
 
 
+class Store:
+  pass
+
+
 def intialise( max_buffer_size=-1, max_channel_size=-1):
   global max_channels
   max_channels = max_channel_size
@@ -21,7 +25,10 @@ def add_channel(channel_name):
   global buffer_size
   if channel not in channel_dictionary:
     #intialise the channel with it's message count value
-    channel_dictionary[channel_name] = [0]
+    temp = new Store()
+    temp.count =0
+    temp.lines = []
+    channel_dictionary[channel] = temp
     return True
 
   else:
@@ -51,29 +58,28 @@ def add_line(channel_name, line):
 
 def add_line_to_channel(channel, line):
   global buffer_size
-  count = channel[0]
+  count = channel.count
 
   if count >= buffer_size:
     count = 0
 
-  channel[count + 1] = line
+  channel.lines[count + 1] = line
   count = count + 1
-  channel[0] = count
-
+  channel.count = count
 
 
 def find_lines(channel_name, regex):
   global channel_dictionary
   if channel in channel_dictionary:
-    matches = find_lines_in_channel(channel_dictionary[channel])
+    matches = find_lines_in_channel(channel_dictionary[channel].lines)
     return Matches
   else:
     return None
 
 
-def find_lines_in_channel(channel, regex):
+def find_lines_in_channel(lines, regex):
   result = []    
-  for line in channel:
+  for line in lines:
     if regex.matches(line):
       result.append(line)
 
