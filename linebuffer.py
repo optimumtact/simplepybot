@@ -3,7 +3,8 @@ channel_dictionary=dict()
 max_channels=None
 buffer_size=20
 
-
+#allows me to use this class like a Struct and assign it arbitrary values
+#using this to store counts associated with each line without nasty line counts
 class Store:
   pass
 
@@ -63,7 +64,7 @@ def add_line_to_channel(channel, line):
   if count >= buffer_size:
     count = 0
 
-  channel.lines[count + 1] = line
+  channel.lines[count] = line
   count = count + 1
   channel.count = count
 
