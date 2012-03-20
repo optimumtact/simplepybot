@@ -3,11 +3,11 @@ import configparser
 import network
 import linebuffer as lb
 import quotestore
-nick=None
-channels=None
+nick = None
+channels = None
 
 def read_file(filename):
-  config=configparser.ConfigParser()
+  config = configparser.ConfigParser()
   config.read(filename)
   return config
 
@@ -15,8 +15,8 @@ def start():
   global nick
   global channels
 
-  config_file='example.cfg'
-  config=read_file(config_file)
+  config_file = 'example.cfg'
+  config = read_file(config_file)
   
   settings = config['Settings']
   nick = settings['nick']
@@ -45,7 +45,7 @@ def handle_messages(messsages):
 def handle_message(prefix, command, params, endprefix):
   global events
   if command in events:
-    events=events[command]
+    events = events[command]
     if event is 'welcome':
       on_welcome()
     elif event is 'privmsg':
@@ -56,8 +56,8 @@ def on_welcome():
   network.joinall(channels)
 
 def on_privmsg(params, message, source):
-  channel=params[0]
-  result=message.split(' ')
+  channel = params[0]
+  result = message.split(' ')
   if False:
     print('temporary')
 
@@ -69,6 +69,6 @@ def on_privmsg(params, message, source):
 
 start()
 while True:
-  messages=network.get_messages()
+  messages = network.get_messages()
   handle_messages(messages)
 
