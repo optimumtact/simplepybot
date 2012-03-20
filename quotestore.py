@@ -70,7 +70,7 @@ def get_unused_id():
 
 #add a quote to the global quote_list, if use_unused_id is false then it will not attempt to fill
 #empty spaces in the quote_list, will return -1 if the maximum number of quotes to store is hit
-def add_quote(quote, use_unused_id=True):
+def add_quote(quote, name, time,  use_unused_id=True):
   global quote_list
   global max_quotes
   global name
@@ -83,8 +83,8 @@ def add_quote(quote, use_unused_id=True):
 
   if spare_id:
     #fill the unused space and return it's id
-    quote_list[spare_id] = quote
-    add_name_mapping(quote[name], spare_id)
+    quote_list[spare_id] = (quote, name, time)
+    add_name_mapping(name, spare_id)
     return spare_id
   
   else:
