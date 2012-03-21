@@ -73,10 +73,11 @@ def get_unused_id():
 def add_quote(quote, name, time,  use_unused_id=True):
   global quote_list
   global max_quotes
-  global name
+  
   if max_quotes <= len(quotelist):
     return -1
   spare_id=None
+  
   if use_unused_id:
     #attempt to grab any unused ID's in the quote_list
     spare_id=get_unused_id()
