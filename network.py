@@ -98,14 +98,16 @@ def join_all(channels):
   for channel in channels:
     join(channel)
 
+
 #send a msg to the given channel, can be channel or user
 def msg(channel, message):
+  channel=channel.lstrip('#')
   send('PRIVMSG ' + channel + ' :' + str(message))
 
-#wrapper for msg that will send the message to the list of channels given
-def msg_all(channels, message):
+def send_messages(channels, messages):
   for channel in channels:
-    send(channel, message)
+    for message in messages:
+      msg(channel, message)
 
 #kill your connection to the server with the given message being sent as your
 #quit message
