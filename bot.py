@@ -20,40 +20,54 @@ find_quote_name=re.compile('^!quotes? find [A-Za-z_]+$')
 add_quote_msg=re.compile('^!quote add [\w+\s?]+$')
 add_quote_user=re.compile('^!quote add <[@+]?[A-Za-z_]+ [\w+\s?]+$')
 
-def read_file(filename):
-  logging.info('Reading file:' + filename)
-  config = configparser.ConfigParser()
-  config.read(filename)
-  logging.info('Done')
-  return config
 
 def start():
   global nick
   global channels
-  logging.info('Intialising bot')
-  config_file = 'example.cfg'
-  config = read_file(config_file)
+  try:
+    config_file = 'example.cfg'
+    config=configparser.ConfigParser()
+    config.read(config_file)
   
-  settings = config['Settings']
-  nick = settings['nick']
-  ident = settings['ident']
-  realname = settings['realname']
-  quote_file = settings['quote file']
-
-  server = config['Server']
-  host = server['host']
-  port = int(server['port'])
-  channels = server['channels'].split(' ')
-
-  #set up quotestore with a given quote file
-  #can be given max quotes parameter
-  quotestore.initalise(quote_file)
+   settings = config['Settings']
+   nick = settings['nick']
+   ident = settings['ident']
+   realname = settings['realname']
+   quote_file = settings['quote file']
   
-  #set up the linebuffer
-  lb.intialise()
+   server = config['Server']
+   host = server['host']
+   port = int(server['port'])
+   channels = server['channels'].split(' ')
+   
+   logging.debug('Settings from file are nick = {nick}, ident = {ident},
+                 realname = {realname}, quote file = {quote_file}'.format(
+                   nick, ident, realname, quote_file))
+   
+   logging.debug('Server settings are address = ({host}, {port}), channels = {channels}'
+                 .format(host, port, channels))
 
-  network.connect((host, port), nick, ident, host, realname)
-  logging.info('Finished Intialisation')
+   #set up quotestore with a given quote file
+   #can be given max quotes parameter
+   quotestore.initalise(quote_file)
+   
+   #set up the linebuffer
+   lb.intialise()
+  
+   network.connect((host, port), nick, ident, host, realname)
+
+   except KeyError as error:
+     if error is 'Server':
+       logging.error('[Server] section of config file is corrupt or missing')
+     
+     elif error is 'Settings':
+       logging.error('[Settings] section of config file is corrupt or missing')
+
+     else:
+      logging.error('The value of {0} is missing or corrupt'.format(error))
+     
+     sys.exit(1)
+
 
 def handle_messages(messsages):
   for message in messages:
@@ -61,12 +75,21 @@ def handle_messages(messsages):
 
 def handle_message(prefix, command, params, endprefix):
   global events
+  
   if command in events:
-    events = events[command]
+    event = events[command]
+    
     if event is 'welcome':
       on_welcome()
+   
     elif event is 'privmsg':
       on_privmsg(params, endprefix, prefix)
+    
+    else:
+      logging.debug('Unhandled command, {0}, occured'.format(event))
+
+  else:
+    logging.debug('Unknown event, {0}, occurred'.format(command))
 
 def on_welcome():
   global channels
@@ -80,6 +103,7 @@ def on_privmsg(params, message, source):
   global add_quote_user
   channel = params[0]
   result = message.split(' ')
+
   if find_quote_single.match(message):
     print('find single')
 
