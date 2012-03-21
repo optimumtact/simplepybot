@@ -115,13 +115,14 @@ def get_quote(quote_id):
   global quote_list
   if quote_list[quote_id]:
     quote = quote_list[quote_id] 
-    return format_quote_for_display(quote)
+    return [format_quote_for_display(quote)]
 
   else:
-    return "I have no quote with that ID"
+    return ["I have no quote with that ID"]
 
 #return a list of all quotes associated with the name name
 def get_quotes_by_name(name):
+  #TODO make this safe
   global name_dictionary
   global quote_list
   local_quotes = []
@@ -136,7 +137,7 @@ def get_quote_range(start_id, end_id):
   global quote_list
   #if we have a bad range input we return them Nothing!
   if end_id - start_id < 0:
-    return "Please enter an end_id larger than the start_id"
+    return ["Please enter an end_id larger than the start_id"]
 
   result=[]
   for quote_id in range(start_id, end_id):
