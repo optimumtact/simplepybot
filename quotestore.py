@@ -79,35 +79,46 @@ def add_quote(quote, name, time,  use_unused_id=True):
   spare_id=None
   
   if use_unused_id:
-    #attempt to grab any unused ID's in the quote_list
+    #attempt to grab an unused ID from the list
     spare_id=get_unused_id()
 
   if spare_id:
     #fill the unused space and return it's id
     quote_list[spare_id] = (quote, name, time)
     add_name_mapping(name, spare_id)
-    return spare_id
-  
+    quote_id=spare_id
+
   else:
     #append quote to end of quote list and return it's id
     quote_list.append(quote)
     add_name_mapping(quote[name], len(quote_list) - 1)
-    return len(quote_list) - 1
+    quote_id=len(quote_list)-1
+
+  return ['Quote:' + quote + ' from ' + name + 'has ID ' + quote_id]
 
 #set the quote linked to quote_id to none and return the old quote to the caller
 def remove_quote(quote_id):
   global quote_list
   global name
-  old_quote=quote_list[quote_id]
-  quote_list[quote_id] = None
-  remove_name_mapping(old_quote[name], quote_id)
-  add_unused_id(quote_id)
-  return old_quote
+  if quote_list[quote_id]:
+    old_quote=quote_list[quote_id]
+    quote_list[quote_id] = None
+    remove_name_mapping(old_quote[name], quote_id)
+    add_unused_id(quote_id)
+    return [format_quote_for_display(old_quote) + 'removed']
+  
+  else:
+    return['I have no quote at ' + quote_id + ' to remove']
 
 #find and return the quote whose id is quote_id
 def get_quote(quote_id):
   global quote_list
-  return quote_list[quote_id]
+  if quote_list[quote_id]:
+    quote = quote_list[quote_id] 
+    return format_quote_for_display(quote)
+
+  else:
+    return "I have no quote with that ID"
 
 #return a list of all quotes associated with the name name
 def get_quotes_by_name(name):
@@ -125,7 +136,8 @@ def get_quote_range(start_id, end_id):
   global quote_list
   #if we have a bad range input we return them Nothing!
   if end_id - start_id < 0:
-    return None
+    return "Please enter an end_id larger than the start_id"
+
   result=[]
   for quote_id in range(start_id, end_id):
     try:
@@ -136,7 +148,15 @@ def get_quote_range(start_id, end_id):
     #if we run out of items in the list then we are done
     except IndexError:
       break
+  
+  list_of_quotes=[]
+  for quote in result:
+    quote=format_quote_for_display(quote)
+    list_of_quotes.append(quote)
 
+
+  return list_of_quotes
+    
 #write all saved quotes out to file
 def flush(filename):
   global quote_list
