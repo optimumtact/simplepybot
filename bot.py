@@ -6,8 +6,9 @@ import quotestore
 import re
 from datetime import datetime
 import logging
+import sys
 
-logging.basicConfig(filename='quotebot.log', level=logging.Debug)
+logging.basicConfig(filename='quotebot.log', level=logging.DEBUG)
 nick = None
 channels = None
 
@@ -29,44 +30,41 @@ def start():
     config=configparser.ConfigParser()
     config.read(config_file)
   
-   settings = config['Settings']
-   nick = settings['nick']
-   ident = settings['ident']
-   realname = settings['realname']
-   quote_file = settings['quote file']
+    settings = config['Settings']
+    nick = settings['nick']
+    ident = settings['ident']
+    realname = settings['realname']
+    quote_file = settings['quote file']
+   
+    server = config['Server']
+    host = server['host']
+    port = int(server['port'])
+    channels = server['channels'].split(' ')
+    
+    logging.debug('Settings from file are nick = {nick}, ident = {ident}, realname = {realname}, quote file = {quote_file}'.format(nick, ident, realname, quote_file))
+    
+    logging.debug('Server settings are address = ({host}, {port}), channels = {channels}'.format(host, port, channels))
+ 
+    #set up quotestore with a given quote file
+    #can be given max quotes parameter
+    quotestore.initalise(quote_file)
+    
+    #set up the linebuffer
+    lb.intialise()
   
-   server = config['Server']
-   host = server['host']
-   port = int(server['port'])
-   channels = server['channels'].split(' ')
-   
-   logging.debug('Settings from file are nick = {nick}, ident = {ident},
-                 realname = {realname}, quote file = {quote_file}'.format(
-                   nick, ident, realname, quote_file))
-   
-   logging.debug('Server settings are address = ({host}, {port}), channels = {channels}'
-                 .format(host, port, channels))
-
-   #set up quotestore with a given quote file
-   #can be given max quotes parameter
-   quotestore.initalise(quote_file)
-   
-   #set up the linebuffer
-   lb.intialise()
+    network.connect((host, port), nick, ident, host, realname)
+ 
+  except KeyError as error:
+    if error is 'Server':
+     logging.error('[Server] section of config file is corrupt or missing')
+     
+    elif error is 'Settings':
+      logging.error('[Settings] section of config file is corrupt or missing')
   
-   network.connect((host, port), nick, ident, host, realname)
-
-   except KeyError as error:
-     if error is 'Server':
-       logging.error('[Server] section of config file is corrupt or missing')
-     
-     elif error is 'Settings':
-       logging.error('[Settings] section of config file is corrupt or missing')
-
-     else:
-      logging.error('The value of {0} is missing or corrupt'.format(error))
-     
-     sys.exit(1)
+    else:
+     logging.error('The value of {0} is missing or corrupt'.format(error))
+    
+    sys.exit(1)
 
 
 def handle_messages(messsages):
@@ -126,7 +124,7 @@ def on_privmsg(params, message, source):
     now=datetime.today()
     timestamp=now.strftime('[%H:%M]')
     logging.debug(str.format('Adding line to linebuffer - ({0}, {1}, {2}, {3}', channel, message, source, timestamp))
-    lb.add_line(channel, message, source, timestamp)n
+    lb.add_line(channel, message, source, timestamp)
 
 
 
