@@ -100,7 +100,9 @@ def add_quote(quote, name, time,  use_unused_id=True):
 def remove_quote(quote_id):
   global quote_list
   global name
-  if quote_list[quote_id]:
+
+  if len(quote_list)-1 > quote_id and quote_list[quote_id]:
+  
     old_quote=quote_list[quote_id]
     quote_list[quote_id] = None
     remove_name_mapping(old_quote[name], quote_id)
@@ -113,29 +115,35 @@ def remove_quote(quote_id):
 #find and return the quote whose id is quote_id
 def get_quote(quote_id):
   global quote_list
-  if quote_list[quote_id]:
+  if len(quote_list)-1 > quote_id and quote_list[quote_id]:
     quote = quote_list[quote_id] 
     return [format_quote_for_display(quote)]
 
   else:
-    return ["I have no quote with that ID"]
+    return ["I have no quote with that id"]
 
 #return a list of all quotes associated with the name name
 def get_quotes_by_name(name):
-  #TODO make this safe
   global name_dictionary
   global quote_list
-  local_quotes = []
-  quote_ids = name_dictionary[name]
-  for quote_id in quote_ids:
-    local_quotes.append(quote_list[quote_id])
+  if name in name_dictionary:
+    local_quotes = []
+    quote_ids = name_dictionary[name]
+    if len(quote_ids) > 0:
+      for quote_id in quote_ids:
+       local_quotes.append(quote_list[quote_id])
+     return local_quotes
+    
+    else:
+      return [" I have no quotes for that user"]
 
-  return local_quotes
+  else:
+    return ["I have no quotes for that user"]
 
 #find and return a list of quotes in the given range
 def get_quote_range(start_id, end_id):
   global quote_list
-  #if we have a bad range input we return them Nothing!
+  #if we have a bad range input we warn them!
   if end_id - start_id < 0:
     return ["Please enter an end_id larger than the start_id"]
 
@@ -150,13 +158,16 @@ def get_quote_range(start_id, end_id):
     except IndexError:
       break
   
-  list_of_quotes=[]
-  for quote in result:
-    quote=format_quote_for_display(quote)
-    list_of_quotes.append(quote)
+  if len(results) > 0:
+    list_of_quotes=[]
+    for quote in result:
+      quote=format_quote_for_display(quote)
+      list_of_quotes.append(quote)
 
+    return list_of_quotes
 
-  return list_of_quotes
+  else:
+    return ['I have no quotes for that range']
     
 #write all saved quotes out to file
 def flush(filename):
