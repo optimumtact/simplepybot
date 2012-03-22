@@ -8,10 +8,13 @@ name=1
 time=2
 
 #allows me to use this class like a Struct and assign it arbitrary values
-#using this to store counts associated with each line without nasty line counts
+#using this to store counts associated with each line without having to 
+#dick around with storing them somewhere in the list
 class Store:
   pass
-
+#TODO
+#add a similar class for storing quotes, maybe bring quotestore into line with this
+#newer format
 
 def intialise( max_buffer_size=-1, max_channel_size=-1):
   global max_channels
@@ -82,6 +85,14 @@ def find_lines(channel_name, regex):
   else:
     return None
 
+def find_lines_by_name(channel, name, message):
+  global channel_dictionary
+  if channel in channel_dictionary:
+    matches = find_lines_by_name_in_channel(channel_dictionary[channel], name, message)
+    return matches
+  else:
+    return None
+
 
 def find_lines_in_channel(channel, regex):
   global message
@@ -92,4 +103,11 @@ def find_lines_in_channel(channel, regex):
 
     return result
 
+def find_lines_by_name_in_channel(channel, user_name, user_message):
+  global message
+  global name
+  result = []
+  for line in channel.lines:
+    if re.match(user_messsage, line(message)) and user_name is line(name):
+      result.append(line)
 
