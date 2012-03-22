@@ -1,7 +1,4 @@
-#position of each part of a quote
-quotepos = 1
-name = 2
-time = 3
+from linebuffer import Line
 
 #dictionary of names storing the id's of each name
 name_dictionary = dict()
@@ -77,14 +74,17 @@ def add_quote(quote, name, time,  use_unused_id=True):
   if max_quotes <= len(quotelist):
     return ['The maximum number of quotes has been exceeded, your quote has not been added']
   spare_id = None
-  
+  temp = Line()
+  temp.quote =quote
+  temp.name = name
+  temp.time = time
   if use_unused_id:
     #attempt to grab an unused ID from the list
     spare_id = get_unused_id()
 
   if spare_id:
     #fill the unused space and return it's id
-    quote_list[spare_id] = (quote, name, time)
+    quote_list[spare_id] = temp
     add_name_mapping(name, spare_id)
     quote_id = spare_id
 
@@ -99,13 +99,12 @@ def add_quote(quote, name, time,  use_unused_id=True):
 #set the quote linked to quote_id to none and return the old quote to the caller
 def remove_quote(quote_id):
   global quote_list
-  global name
 
   if len(quote_list)-1 > quote_id and quote_list[quote_id]:
   
     old_quote=quote_list[quote_id]
     quote_list[quote_id] = None
-    remove_name_mapping(old_quote[name], quote_id)
+    remove_name_mapping(old_quote.name, quote_id)
     add_unused_id(quote_id)
     return [format_quote_for_display(old_quote) + 'removed']
   
@@ -195,15 +194,12 @@ def store_quotes_in_file(quotes, filename):
 
 #return a quote split into a list of lines for storing into a flat file
 def format_quote_for_storage(quote):
-  global name
-  global time
-  global quotepos
   result = None
   if quote:
     result = ['[Quote]\n']
-    result.append(quote[name]+'\n')
-    result.append(quote[time]+'\n')
-    result.append(quote[quotepos]+'\n')
+    result.append(quote.name + '\n')
+    result.append(quote.time + '\n')
+    result.append(quote.quote + '\n')
     return result
   else:
     result = ['[Null Quote]\n']
@@ -211,7 +207,4 @@ def format_quote_for_storage(quote):
 
 #format a given quote into a string suitable for display
 def format_quote_for_display(quote):
-  global name
-  global time
-  global quotepos
-  return '[' + quote[time] + '] <' + quote[name] + '> :' + quote[quotepos]
+  return '[' + quote.time + '] <' + quote.name + '> :' + quote.quote
