@@ -75,24 +75,24 @@ def add_quote(quote, name, time,  use_unused_id=True):
   global max_quotes
   
   if max_quotes <= len(quotelist):
-    return -1
-  spare_id=None
+    return ['The maximum number of quotes has been exceeded, your quote has not been added']
+  spare_id = None
   
   if use_unused_id:
     #attempt to grab an unused ID from the list
-    spare_id=get_unused_id()
+    spare_id = get_unused_id()
 
   if spare_id:
     #fill the unused space and return it's id
     quote_list[spare_id] = (quote, name, time)
     add_name_mapping(name, spare_id)
-    quote_id=spare_id
+    quote_id = spare_id
 
   else:
     #append quote to end of quote list and return it's id
     quote_list.append(quote)
     add_name_mapping(quote[name], len(quote_list) - 1)
-    quote_id=len(quote_list)-1
+    quote_id = len(quote_list)-1
 
   return ['Quote:' + quote + ' from ' + name + 'has ID ' + quote_id]
 
