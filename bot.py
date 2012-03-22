@@ -101,7 +101,7 @@ def on_privmsg(params, message, source):
   global add_quote_user
   channel = params[0]
   result = message.split(' ')
-  answer=None
+  answer = None
 
   if find_quote_single.match(message):
     print('find single')
