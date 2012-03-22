@@ -2,19 +2,17 @@ import re
 channel_dictionary=dict()
 max_channels=None
 buffer_size=20
-#tuple position integers
-name=0
-name=1
-time=2
 
 #allows me to use this class like a Struct and assign it arbitrary values
 #using this to store counts associated with each line without having to 
 #dick around with storing them somewhere in the list
 class Store:
   pass
-#TODO
-#add a similar class for storing quotes, maybe bring quotestore into line with this
-#newer format
+
+#this one here is used for storing the message, time  and name associated
+#with each line in the buffer
+class Line:
+  pass
 
 def intialise( max_buffer_size=-1, max_channel_size=-1):
   global max_channels
@@ -68,11 +66,15 @@ def add_line(channel_name, line, name, time):
 def add_line_to_channel(channel, line, name, time):
   global buffer_size
   count = channel.count
+  temp = Line()
+  temp.name = name
+  temp.time = time
+  temp.message = line
 
   if count >= buffer_size:
     count = 0
 
-  channel.lines[count] = (line, name, time)
+  channel.lines[count] = temp
   count = count + 1
   channel.count = count
 
@@ -85,7 +87,7 @@ def find_lines(channel_name, regex):
   else:
     return None
 
-def find_lines_by_name(channel, name, message):
+def find_lines_by_name(channel, name, regex):
   global channel_dictionary
   if channel in channel_dictionary:
     matches = find_lines_by_name_in_channel(channel_dictionary[channel], name, message)
@@ -95,19 +97,16 @@ def find_lines_by_name(channel, name, message):
 
 
 def find_lines_in_channel(channel, regex):
-  global message
   result = []    
   for line in channel.lines:
-    if regex.matches(line(message)):
+    if re.matches(line.message, regex):
       result.append(line)
 
     return result
 
 def find_lines_by_name_in_channel(channel, user_name, user_message):
-  global message
-  global name
   result = []
   for line in channel.lines:
-    if re.match(user_messsage, line(message)) and user_name is line(name):
+    if re.match(user_messsage, line.message) and user_name is line.name:
       result.append(line)
 
