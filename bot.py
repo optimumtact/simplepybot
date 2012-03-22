@@ -105,38 +105,39 @@ def on_privmsg(params, message, source):
 
   if find_quote_single.match(message):
     print('find single')
-    quote_id=int(result[2])
-    answer=quotestore.get_quote(quote_id)
+    quote_id = int(result[2])
+    answer = quotestore.get_quote(quote_id)
 
   elif find_quote_range.match(message):
     print('find range')
-    start_id=int(result[2])
-    end_id=int(result[3])
-    answer=
+    start_id = int(result[2])
+    end_id = int(result[3])
+    answer = quotestore.get_quote_range(start_id, end_id)
   
   elif find_quote_name.match(message):
     print('find name')
-    name=result[2]
-    answer=find_quote_by_name(name, channel)
+    name = result[2]
+    answer = quotestore.get_quotes_by_name(name)
   
   
   elif add_quote_msg.match(messsage):
     print('add quote message')
-    parts=message.spllit(' ', 2)
-    answer=quote_by_message(parts[2], channel)
+    parts = message.spllit(' ', 2)
+    answer = quote_by_message(parts[2], channel)
     
 
   elif add_quote_user.match(message):
     print('add quote by user')
-    parts=message.split(' ', 3)
-    answer=quote_by_name(parts[2], parts[3], channel)
+    parts = message.split(' ', 3)
+    possible_matches = lb.find_lines_by_name(channel, parts[2], parts[3])
+    answer = possible_matches
 
   elif message.starts_with('!'):
     print('ignore malformed commands')
 
   else:
-    now=datetime.today()
-    timestamp=now.strftime('[%H:%M]')
+    now = datetime.today()
+    timestamp = now.strftime('[%H:%M]')
     logging.debug(str.format('Adding line to linebuffer - ({0}, {1}, {2}, {3}', channel, message, source, timestamp))
     lb.add_line(channel, message, source, timestamp)
   
@@ -144,7 +145,6 @@ def on_privmsg(params, message, source):
     #if we have a response we send it
     net.msg(channel, answer)
 
-def find_quote(quote_id, channel):
   
 
 start()
