@@ -123,14 +123,22 @@ def on_privmsg(params, message, source):
   elif add_quote_msg.match(messsage):
     print('add quote message')
     parts = message.spllit(' ', 2)
-    answer = quote_by_message(parts[2], channel)
+    answer = lb.find_lines(channel, parts[2])
+    if answer:
+      answer = quotestore.add_quote(answer.line, answer.name, answer.time)
     
+    else:
+      answer = ['No matches found for that search']
 
   elif add_quote_user.match(message):
     print('add quote by user')
     parts = message.split(' ', 3)
-    possible_matches = lb.find_lines_by_name(channel, parts[2], parts[3])
-    answer = possible_matches
+    answer = lb.find_lines_by_name(channel, parts[2], parts[3])
+    if answer:
+      answer = quotestore.add_quote(answer.line, answer.name, answer.time)
+
+    else:
+      answer = ['No matches found for that search']
 
   elif message.starts_with('!'):
     print('ignore malformed commands')
