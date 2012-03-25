@@ -83,7 +83,10 @@ def find_lines(channel_name, regex):
   global channel_dictionary
   if channel in channel_dictionary:
     matches = find_lines_in_channel(channel_dictionary[channel], regex)
-    return Matches
+    if len(matches) > 1:
+      return None
+    else:
+      return matches[0]
   else:
     return None
 
@@ -91,7 +94,10 @@ def find_lines_by_name(channel, name, regex):
   global channel_dictionary
   if channel in channel_dictionary:
     matches = find_lines_by_name_in_channel(channel_dictionary[channel], name, message)
-    return matches
+    if len(matches) > 1:
+      return None
+    else:
+      return matches[0]
   else:
     return None
 
