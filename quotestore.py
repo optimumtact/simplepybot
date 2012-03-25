@@ -131,7 +131,7 @@ def get_quotes_by_name(name):
     if len(quote_ids) > 0:
       for quote_id in quote_ids:
        local_quotes.append(quote_list[quote_id])
-     return local_quotes
+    return local_quotes
     
     else:
       return [" I have no quotes for that user"]
