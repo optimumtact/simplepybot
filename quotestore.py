@@ -1,4 +1,5 @@
 from linebuffer import Line
+import logging
 
 #dictionary of names storing the id's of each name
 name_dictionary = dict()
@@ -18,22 +19,28 @@ def initalise(filename, maximum_quotes_to_store=-1):
   global name
   global max_quotes
   max_quotes = maximum_quotes_to_store
+  f=None
   #TODO make this support when there is no file to be opened
-  f = open(filename, 'r')
-  lines = f.readlines()
-  
-  #loop through the file and read and parse each line adding it to the appropriate lists
-  count = 0
-  while f.readable():
-    line = parse_line(f)
-    if line:
-      add_name_mapping(line[name])
-      add_quote(line, False)
+  try:
+    f = open(filename, 'r')
+    lines = f.readlines()
+    logging.debug('Read quote file {0}'.format(filename)) 
+  except IOError:
+    logging.info('Quote file: {0} doesn\'t exist, creating it for the first run through'.format(filename))
+    
+  if f:
+    #loop through the file and read and parse each line adding it to the appropriate lists
+    count = 0
+    while f.readable():
+      line = parse_line(f)
+      if line:
+        add_name_mapping(line[name])
+        add_quote(line, False)
      
-    else:
-      add_unused_id(count)
+      else:
+        add_unused_id(count)
 
-    count+=1
+      count+=1
 
 #if the given name exists in the dictionary then add that name->list_id mapping, if it doesn't then
 #add the name to the dictionary and set up its id list with the given list_id
@@ -131,7 +138,7 @@ def get_quotes_by_name(name):
     if len(quote_ids) > 0:
       for quote_id in quote_ids:
        local_quotes.append(quote_list[quote_id])
-    return local_quotes
+      return local_quotes
     
     else:
       return [" I have no quotes for that user"]

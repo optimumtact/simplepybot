@@ -15,7 +15,7 @@ buffer_size = 4096
 def connect(address, nick, ident, server, realname):
   global socket
   socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-  socket.connect(addresss)
+  socket.connect(address)
   send('NICK ' + nick)
   send('USER ' + nick + ' ' + ident + ' ' + server  +' :' + realname)
   return True
@@ -26,6 +26,12 @@ def send(line, encode="utf-8"):
   line = line.replace('\r', '')
   line = line.replace('\n', '')
   line = line.replace('\r\n', '')+'\r\n'
+  totalsent = 0
+  while totalsent < len(line):
+    sent = socket.send(line[totalsent:].encoded(encode))
+    if sent = 0:
+      raise RuntimeError('Socket connection broken')
+    totalsent = totalsent + sent
   socket.send(line.encoded(encode))
 
 def recv():

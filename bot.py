@@ -13,13 +13,13 @@ nick = None
 channels = None
 
 #Find command regex
-find_quote_single=re.compile('^!quotes? find [0-9]+$')
-find_quote_range=re.compile('^!quotes? find [0-9]+ [0-9]+$')
-find_quote_name=re.compile('^!quotes? find [A-Za-z_]+$')
+find_quote_single = re.compile('^!quotes? find [0-9]+$')
+find_quote_range = re.compile('^!quotes? find [0-9]+ [0-9]+$')
+find_quote_name = re.compile('^!quotes? find [A-Za-z_]+$')
 
 #add command regex
-add_quote_msg=re.compile('^!quote add [\w+\s?]+$')
-add_quote_user=re.compile('^!quote add <[@+]?[A-Za-z_]+ [\w+\s?]+$')
+add_quote_msg = re.compile('^!quote add [\w+\s?]+$')
+add_quote_user = re.compile('^!quote add <[@+]?[A-Za-z_]+ [\w+\s?]+$')
 
 
 def start():
@@ -27,24 +27,20 @@ def start():
   global channels
   try:
     config_file = 'example.cfg'
-    config=configparser.ConfigParser()
+    config = configparser.ConfigParser()
     config.read(config_file)
-  
-    settings = config['Settings']
-    nick = settings['nick']
-    ident = settings['ident']
-    realname = settings['realname']
-    quote_file = settings['quote file']
+    nick = config['settings']['nick']
+    ident = config['settings']['ident']
+    realname = config['settings']['realname']
+    quote_file = config['settings']['quote file']
    
-    server = config['Server']
-    host = server['host']
-    port = int(server['port'])
-    channels = server['channels'].split(' ')
+    host = config['server']['host']
+    port = int(config['server']['port'])
+
+    channels = config['server']['channels'].split(' ')
+    logging.debug('Settings from file are nick = {0}, ident = {1}, realname = {2}, quote file = {3}'.format(nick, ident, realname, quote_file))
     
-    logging.debug('Settings from file are nick = {nick}, ident = {ident}, realname = {realname}, quote file = {quote_file}'.format(nick, ident, realname, quote_file))
-    
-    logging.debug('Server settings are address = ({host}, {port}), channels = {channels}'.format(host, port, channels))
- 
+    logging.debug('Server settings are address = ({0}, {1}), channels = {2}'.format(host, port, channels))
     #set up quotestore with a given quote file
     #can be given max quotes parameter
     quotestore.initalise(quote_file)
