@@ -1,7 +1,7 @@
 import re
 import socket
-
-ircmsg = re.compile(r"(?P<prefix>:\S+ )?(?P<command>(\w+ld{3}))(?P<params>( [^ :]\S*)*)(?P<postfix> :.*)?")
+import logging
+ircmsg = re.compile(r"(?P<prefix>:\S+ )?(?P<command>(\w+|\d{3}))(?P<params>( [^:]\S+)*)(?P<postfix> :.*)?")
 
 #stores incomplete messages
 incomplete_buffer = ''
@@ -21,18 +21,18 @@ def connect(address, nick, ident, server, realname):
   return True
 
 #send a line to the server, formatting as required by rfc 1459
-def send(line, encode="utf-8"):
+def send(line, encoding="utf-8"):
   global socket
   line = line.replace('\r', '')
   line = line.replace('\n', '')
   line = line.replace('\r\n', '')+'\r\n'
   totalsent = 0
   while totalsent < len(line):
-    sent = socket.send(line[totalsent:].encoded(encode))
-    if sent = 0:
+    sent = socket.send(line[totalsent:].encode(encoding))
+    if sent is 0 :
       raise RuntimeError('Socket connection broken')
     totalsent = totalsent + sent
-  socket.send(line.encoded(encode))
+  socket.send(line.encode(encoding))
 
 def recv():
   global socket
@@ -64,11 +64,17 @@ def process_data(data):
 def parse_message(message):
   global ircmsg
   global debug
+  logging.debug(message)
   m = ircmsg.match(message)
+  prefix = None
+  postfix = None
+  params = None
+  command = None
   if m:
     prefix = m.group('prefix')
     if prefix:
-      prefix = prefix.lstrip(' ', ':')
+      prefix = prefix.lstrip(' ')
+      prefix = prefix.lstrip(':')
 
     command = m.group('command')
 
@@ -79,18 +85,26 @@ def parse_message(message):
 
     postfix = m.group('postfix')
     if postfix:
-      postfix = postfix.strip(' ')
+      postfix = postfix.lstrip(' ')
       postfix = postfix.lstrip(':')
+  
+  if m:
+    logging.debug('Cleaned message, prefix = {0}, command = {1}, params = {2}, postfix = {3}'.format(prefix, command, params, postfix))
+    return (prefix, command, params, postfix)
 
-  return (prefix, command, params, postfix)
+  else:
+    logging.warn('Couldn\'t match message {0}'.format(message))
+    return None
 
 #Get a number of messages from the socket and return them in list form
-def get_messsages():
+def get_messages():
   data = recv()
   result = process_data(data)
   clean = []
   for line in result:
-    clean.append(parse_message(line))
+    cleaned_message = parse_message(line)
+    if cleaned_message:
+      clean.append(cleaned_message)
   return clean
 
 #IRC CONVIENENCE METHODS

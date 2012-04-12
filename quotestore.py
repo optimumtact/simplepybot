@@ -164,7 +164,7 @@ def get_quote_range(start_id, end_id):
     except IndexError:
       break
   
-  if len(results) > 0:
+  if len(result) > 0:
     list_of_quotes=[]
     for quote in result:
       quote=format_quote_for_display(quote)

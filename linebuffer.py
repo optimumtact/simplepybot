@@ -22,7 +22,7 @@ def intialise( max_buffer_size=-1, max_channel_size=-1):
     buffer_size = max_buffer_size
 
 
-def add_channel(channel_name):
+def add_channel(channel):
   global max_channels
   global channel_dictionary
 
@@ -37,7 +37,7 @@ def add_channel(channel_name):
     temp.lines = []
     channel_dictionary[channel] = temp
     return True
-
+  
   else:
     return False
 
@@ -54,10 +54,17 @@ def remove_channel(channel_name):
 def add_line(channel_name, line, name, time):
   global channel_dictionary
   #this will add the channel if it does not yet exist
-  add_channel(channel_name)
 
   #get the channel we want to add the line too
-  channel = channel_dictionary[channel_name]
+  if channel_name in channel_dictionary:
+    channel = channel_dictionary[channel_name]
+
+  else:
+    if add_channel(channel_name):
+      channel = channel_dictionary[channel_name]
+
+    else:
+      return ['Max Channels exceeded']
 
   #now we append the line to the channel
   add_line_to_channel(channel, line, name, time)
@@ -79,7 +86,7 @@ def add_line_to_channel(channel, line, name, time):
   channel.count = count
 
 
-def find_lines(channel_name, regex):
+def find_lines(channel, regex):
   global channel_dictionary
   if channel in channel_dictionary:
     matches = find_lines_in_channel(channel_dictionary[channel], regex)

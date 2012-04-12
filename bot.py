@@ -21,6 +21,8 @@ find_quote_name = re.compile('^!quotes? find [A-Za-z_]+$')
 add_quote_msg = re.compile('^!quote add [\w+\s?]+$')
 add_quote_user = re.compile('^!quote add <[@+]?[A-Za-z_]+ [\w+\s?]+$')
 
+events = {'PRIVMSG':'privmsg',
+          '001':'welcome'}
 
 def start():
   global nick
@@ -63,13 +65,13 @@ def start():
     sys.exit(1)
 
 
-def handle_messages(messsages):
+def handle_messages(messages):
   for message in messages:
     handle_message(message)
 
-def handle_message(prefix, command, params, endprefix):
+def handle_message(message):
   global events
-  
+  prefix, command, params, endprefix = message
   if command in events:
     event = events[command]
     
@@ -87,7 +89,7 @@ def handle_message(prefix, command, params, endprefix):
 
 def on_welcome():
   global channels
-  network.joinall(channels)
+  network.join_all(channels)
 
 def on_privmsg(params, message, source):
   global find_quote_single
@@ -116,9 +118,9 @@ def on_privmsg(params, message, source):
     answer = quotestore.get_quotes_by_name(name)
   
   
-  elif add_quote_msg.match(messsage):
+  elif add_quote_msg.match(message):
     print('add quote message')
-    parts = message.spllit(' ', 2)
+    parts = message.split(' ', 2)
     answer = lb.find_lines(channel, parts[2])
     if answer:
       answer = quotestore.add_quote(answer.line, answer.name, answer.time)
@@ -136,7 +138,7 @@ def on_privmsg(params, message, source):
     else:
       answer = ['No matches found for that search']
 
-  elif message.starts_with('!'):
+  elif message.startswith('!'):
     print('ignore malformed commands')
 
   else:
@@ -145,9 +147,10 @@ def on_privmsg(params, message, source):
     logging.debug(str.format('Adding line to linebuffer - ({0}, {1}, {2}, {3}', channel, message, source, timestamp))
     lb.add_line(channel, message, source, timestamp)
   
+  print (answer)
   if answer:
     #if we have a response we send it
-    net.msg(channel, answer)
+    network.msg(channel, answer)
 
   
 
@@ -155,4 +158,3 @@ start()
 while True:
   messages = network.get_messages()
   handle_messages(messages)
-
