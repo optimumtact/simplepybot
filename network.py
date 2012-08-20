@@ -2,7 +2,7 @@ import re
 import socket
 import logging
 
-class Network:
+class irc_socket:
     ircmsg = re.compile(r"(?P<prefix>:\S+ )?(?P<command>(\w+|\d{3}))(?P<params>( [^:]\S+)*)(?P<postfix> :.*)?")
 
     def __init__(b_size = 1024):
@@ -103,24 +103,3 @@ class Network:
         if cleaned_message:
           clean.append(cleaned_message)
       return clean
-    
-    #IRC CONVIENENCE METHODS
-    #join the given channel, strips out hashes if they are found, to prevent issues
-    def join(self, channel):
-      channel = channel.lstrip('#')
-      self.send('JOIN #' + channel)
-    
-    #send a msg to the given channel, can be channel or user
-    def msg(self, channel, message):
-      channel=channel.lstrip('#')
-      self.send('PRIVMSG ' + channel + ' :' + str(message))
-    
-    #kill your connection to the server with the given message being sent as your
-    #quit message
-    def kill(self, message):
-      self.send("QUIT :" + message)
-    
-    #leave the given channel with a leave message given by message
-    def leave(self, channel, message):
-      self.send('check what this is')#TODO: fixme
-    
