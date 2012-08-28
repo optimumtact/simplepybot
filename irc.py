@@ -1,12 +1,12 @@
 from network import IrcSocket
-class IrcConnect(IrcSocket):
+class IrcConnection(IrcSocket):
     """
     Represents a wrapper for the network class, provides convienience methods
     for irc such as msg and join/leave channels
     """
     def __init__(self, name, server, port):
         assert server and port
-        super(IrcConnect, self).__init__()
+        super(IrcConnection, self).__init__()
         self.connect((server, port), name, "bot@"+server, server, name)
 
         self.name = name
