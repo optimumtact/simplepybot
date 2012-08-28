@@ -1,17 +1,5 @@
-import irc
-from time import sleep
+from commandbot import *
 import dbm
-import re
-
-def command(expr, func):
-    guard = re.compile(expr)
-    def process(source, action, targets, message):
-        m = guard.match(message)
-        if not m:
-            return False
-        func(source, action, targets, message, m)
-        return True
-    return process
 
 class QuoteDB:
     def __enter__(self):
@@ -19,25 +7,6 @@ class QuoteDB:
         return self._internal
     def __exit__(self, type, value, traceback):
         self._internal.close()
-
-class CommandBot(irc.IrcConnection):
-    commands = []
-    def __init__(self, nick, network, port):
-        super(CommandBot, self).__init__(nick, network, port)
-
-    def loop(self):
-        while True:
-            self.logic()
-            sleep(.1)
-
-    def logic(self):
-        for m in self.get_messages():
-            source, action, targets, message = m
-            print(m)
-            if message and action == "PRIVMSG":
-                for c in self.commands:
-                    if c(source, action, targets, message):
-                        break
 
 class QuoteBot(CommandBot):
     honk = "HONK"
