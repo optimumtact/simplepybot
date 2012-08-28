@@ -29,19 +29,32 @@ class IrcConnection(IrcSocket):
             self.msg(message, channel)
 
     def msg(self, message, channel):
+        '''
+        Send a message to a specific target.
+        '''
         self.send('PRIVMSG ' + channel + ' :' + message)
 
     def join(self, channel):
+        '''
+        Join a channel.
+
+        The channel should contain one or more # symbols as needed.
+        '''
         self.send('JOIN ' + channel)
 
     def quit(self, message):
+        '''
+        Disconnects from a server with a given QUIT message.
+        '''
         self.send('QUIT :' + message)
 
     def leave(self, channel, message):
+        '''
+        Leaves a channel, optionally sending a message to the channel first.
+
+        XXX: The message should probably be the PART message
+        '''
         if message:
             self.msg(message, channel)
         self.send('PART ' + channel)
 
-    def leave_all(self, channels, message):
-        for channel in channels:
-            self.leave(channel, message)

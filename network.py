@@ -3,15 +3,25 @@ import socket
 import logging
 
 class IrcSocket(object):
+    '''
+    Base IrcSocket class.
+
+    Consists of a few basic functions aside from sending/receiving.
+    Sending NICK, USER, message parsing, and sending PONG responses.
+    '''
     ircmsg = re.compile(r"(?P<prefix>:\S+ )?(?P<command>(\w+|\d{3}))(?P<params>( [^:]\S+)*)(?P<postfix> :.*)?")
 
     def __init__(self, b_size = 1024):
-        print("bcons")
         self.socket = None
         self.incomplete_buffer = ''
         self.buffer_size = b_size
 
     def connect(self, address, nick, ident, server, realname):
+        '''
+        Connect to a server.
+
+        Sends NICK and USER messages.
+        '''
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.connect(address)
         self.send('NICK %s' % nick)
@@ -34,6 +44,9 @@ class IrcSocket(object):
         #self.socket.send(line.encode(encoding))
 
     def recv(self):
+        '''
+        Receives data from the server.
+        '''
         buffer_size = self.buffer_size
         d = self.socket.recv(buffer_size)
         data = d.decode('utf-8', 'replace')
@@ -61,7 +74,7 @@ class IrcSocket(object):
 
     def parse_message(self, message):
         '''
-        utility method turning an ircmsg into a nicely formatted tuple for ease of use
+        Utility method turning an ircmsg into a nicely formatted tuple for ease of use.
         '''
         logging.debug(message)
         m = self.ircmsg.match(message)
