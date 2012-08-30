@@ -1,19 +1,22 @@
 from commandbot import *
 import dbm
+import sys
 
 class QuoteDB:
     '''
     Trivial wrapper class over dbm to enable use in with statements.
     '''
     def __enter__(self):
-        self._internal = dbm.open('quotes', 'c')
+        self._internal = dbm.open('alias', 'c')
         return self._internal
     def __exit__(self, type, value, traceback):
         self._internal.close()
 
-class QuoteBot(CommandBot):
+class AliasBot(CommandBot):
     '''
     An IRC Bot that can store, retrieve, and delete items.
+    This bot stands as an example to all and sundry
+    Coded by TrueshiftBlue
 
     Contains a simple easter egg - HONK.
     '''
@@ -21,12 +24,14 @@ class QuoteBot(CommandBot):
     nick = "gamzee"
     def __init__(self, network, port):
         self.commands = [
+	    command(r"^%s: quit" %self.nick, self.end),
             command(r"^%s:" % self.nick, self.honk),
             command(r"^!learn (?P<abbr>\S+) as (?P<long>\S.*)$", self.learn),
             command(r"^!forget (?P<abbr>\S+)", self.forget),
+	    command(r"^!list_abbr$", self.list_abbrievations),
             command(r"^!(?P<abbr>\S+)$", self.retrieve)
         ]
-        super(QuoteBot, self).__init__(self.nick, network, port)
+        super(AliasBot, self).__init__(self.nick, network, port)
         self.honk = "HONK"
 
     def alternate_honk(self):
@@ -58,7 +63,7 @@ class QuoteBot(CommandBot):
             del(self.quotes[command])
             self.msg_all("Hrm. I used to remember %s. Now I don't." % command, targets)
         else:
-            self.msg_all("Sorry, I don't about %s." % command, targets)
+            self.msg_all("Sorry, I don't know about %s." % command, targets)
 
     def retrieve(self, source, action, targets, message, m):
         '''
@@ -68,12 +73,26 @@ class QuoteBot(CommandBot):
         if command in self.quotes:
             self.msg_all("%s: %s" % (command, self.quotes[command].decode()), targets)
         else:
-            self.msg_all("Sorry, I don't about %s." % command, targets)
+            self.msg_all("Sorry, I don't know about %s." % command, targets)
 
+    def end(self, source, action, targets, message, m):
+	"""
+	Quits the server
+	"""
+	self.quit("I can code something!")
+	sys.exit(0)
+    
+    def list_abbrievations(self, source, action, targets, message, m):
+        """
+	List all known abbrievations
+	"""
+	keys = ", ".join(self.quotes.keys())
+	self.msg_all(keys, targets)
+	 
     def loop(self):
         with QuoteDB() as self.quotes:
-            super(QuoteBot, self).loop()
+            super(AliasBot, self).loop()
 
-qb = QuoteBot("irc.segfault.net.nz", 6667)
+qb = AliasBot("irc.segfault.net.nz", 6667)
 qb.join("#bots")
 qb.loop()
