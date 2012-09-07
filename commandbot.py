@@ -74,7 +74,8 @@ class CommandBot(IrcSocket):
         Returns a tuple in the format (senders nick, message receivers, message) if a match is found, otherwise
         it returns None
 
-        This method does not capture any errors, so as to allow the bot calling to define error handling
+        This method does not capture any errors, so as to allow the bot calling to define what happens when
+        the regex compile fails (a re.error is throw, so catch that)
         """
         for entry in self.logs:
 
