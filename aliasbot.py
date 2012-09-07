@@ -25,11 +25,11 @@ class AliasBot(CommandBot):
     def __init__(self, network, port):
         self.commands = [
 	    command(r"^%s: quit" %self.nick, self.end),
-            command(r"^%s:" % self.nick, self.honk),
-            command(r"^!learn (?P<abbr>\S+) as (?P<long>\S.*)$", self.learn),
-            command(r"^!forget (?P<abbr>\S+)", self.forget),
+        command(r"^%s:" % self.nick, self.honk),
+        command(r"^!learn (?P<abbr>\S+) as (?P<long>\S.*)$", self.learn),
+        command(r"^!forget (?P<abbr>\S+)", self.forget),
 	    command(r"^!list_abbr$", self.list_abbrievations),
-            command(r"^!(?P<abbr>\S+)$", self.retrieve)
+        command(r"^!(?P<abbr>\S+)$", self.retrieve)
         ]
         super(AliasBot, self).__init__(self.nick, network, port)
         self.honk = "HONK"
