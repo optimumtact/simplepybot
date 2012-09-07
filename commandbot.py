@@ -59,9 +59,6 @@ class CommandBot(IrcSocket):
         takes standard input from self.get_messages() and does cleaning on it, specifically
         splitting the nick out of the irc senders representation (nick!username@server)
         """
-        if message.starts_with(self.command_prefix):
-            return
-
         senders_name = source.split('!')[0]
         self.logs.append((senders_name, targets, message))
 
