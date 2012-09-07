@@ -1,4 +1,6 @@
 from network import IrcSocket
+import dbm
+import sys
 import re
 from time import sleep
 
@@ -30,7 +32,7 @@ class CommandBot(IrcSocket):
         super(CommandBot, self).__init__()
         assert network and port
         self.connect((network, port), nick, "bot@"+network, network, nick)
-        self.name = nick
+        self.nick = nick
         self.server = network
         self.port = port
 
@@ -40,11 +42,12 @@ class CommandBot(IrcSocket):
 
         You'll need to transfer control to this function before execution begins.
 
-        You may wish to override this.
+        You may wish to override this, but you'll lose the message logging
         '''
-        while True:
-            self.logic()
-            sleep(.1)
+        with BotDB('message_logs') as self.logs:
+            while True:
+                self.logic()
+                sleep(.1)
 
     """
     Log messages inside an internal database for later retrieval	
@@ -69,7 +72,7 @@ class CommandBot(IrcSocket):
                 for c in self.commands:
                     if c(source, action, targets, message):
                         break
-                    
+
 
         return
 
@@ -119,3 +122,26 @@ class CommandBot(IrcSocket):
             self.msg(message, channel)
         self.send('PART ' + channel)
 
+
+class BotDB:
+    """
+    Trivial wrapper class over dbm to enable use in with statements.
+    """
+    def __init__(self, name):
+        """
+        Store the given name to use for this Database
+        """
+        self.name = name
+
+    def __enter__(self):
+        """
+        Set up the internal db with the right settings
+        """
+        self._internal = dbm.open(self.name, 'c')
+        return self._internal
+    
+    def __exit__(self, type, value, traceback):
+        """
+        On exit we simply close internal db instance
+        """
+        self._internal.close()
