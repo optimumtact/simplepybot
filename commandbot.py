@@ -97,6 +97,42 @@ class CommandBot(IrcSocket):
 
         return None
 
+    def search_logs_greedy(self, regex, name = None, match = True):
+        """
+        Search the stored logs for a message matching the regex given, on a match keeps matching
+        and returns a list of all matching logs
+        Parameters:
+
+        Optional:
+            nick: if specified attempts to match the given value to the nick as well
+            match: controls wether the regex matcher uses a .search or a .match as per  python re specs
+        
+        Returns a tuple in the format (senders nick, message receivers, message) if a match is found, otherwise
+        it returns None
+
+        This method does not capture any errors, so as to allow the bot calling to define error handling
+        """
+        all_matches = []
+        for entry in self.logs:
+
+            if match:
+                result = re.match(regex, entry[2])
+            
+            else:
+                result = re.search(regex, entry[2])
+
+            if result:
+                if name:
+                    if entry[0] == name:
+                        all_matches.append(entry)
+
+                    else:
+                        continue
+
+                else:
+                    all_matches.append(entry)
+
+        return all_matches
 
     def logic(self):
         '''
