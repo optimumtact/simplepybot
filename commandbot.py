@@ -3,6 +3,8 @@ import dbm
 import sys
 import re
 from time import sleep
+from collections import deque
+
 
 def command(expr, func):
     '''
@@ -28,6 +30,7 @@ class CommandBot(IrcSocket):
     See the command helper for constructing commands.
     '''
     commands = []
+
     def __init__(self, nick, network, port):
         super(CommandBot, self).__init__()
         assert network and port
@@ -35,6 +38,8 @@ class CommandBot(IrcSocket):
         self.nick = nick
         self.server = network
         self.port = port
+        self.logs = deque(maxlen=100)
+
 
     def loop(self):
         '''
@@ -42,20 +47,58 @@ class CommandBot(IrcSocket):
 
         You'll need to transfer control to this function before execution begins.
 
-        You may wish to override this, but you'll lose the message logging
+        You may wish to override this
         '''
-        with BotDB('message_logs') as self.logs:
-            while True:
-                self.logic()
-                sleep(.1)
+        while True:
+            self.logic()
+            sleep(.1)
 
-    """
-    Log messages inside an internal database for later retrieval	
-    """
     def log_message(self, source, action, targets, message, m):
-        #not implemented yet
-        pass
+        """
+        Log messages in order with a queue, these can be searched by search_logs(regex, name)
+        takes standard input from self.get_messages() and does cleaning on it, specifically
+        splitting the nick out of the irc senders representation (nick!username@server)
+        """
+        if message.starts_with(self.command_prefix):
+            return
 
+        senders_name = source.split('!')[0]
+        self.logs.append((senders_name, targets, message))
+
+    def search_logs(self, regex, name=None, match = True):
+        """
+        Search the stored logs for a message matching the regex given
+        Parameters:
+
+        Optional:
+            nick: if specified attempts to match the given value to the nick as well
+            match: controls wether the regex matcher uses a .search or a .match as per  python re specs
+        
+        Returns a tuple in the format (senders nick, message receivers, message) if a match is found, otherwise
+        it returns None
+
+        This method does not capture any errors, so as to allow the bot calling to define error handling
+        """
+        for entry in self.logs:
+
+            if match:
+                result = re.match(regex, entry[2])
+            
+            else:
+                result = re.search(regex, entry[2])
+
+            if result:
+                if name:
+                    if entry[0] == name:
+                        return entry
+
+                    else:
+                        return None
+
+                else:
+                    return entry
+
+        return None
 
 
     def logic(self):
@@ -68,11 +111,13 @@ class CommandBot(IrcSocket):
             source, action, targets, message = m
             print(m)
             if message and action == "PRIVMSG":
-                self.log_message(source, action, targets, message, m)
                 for c in self.commands:
                     if c(source, action, targets, message):
                         break
 
+                #if we reach this point it matches no known command and
+                #therefore can be logged 
+                self.log_message(source, action, targets, message, m)
 
         return
 
@@ -139,7 +184,7 @@ class BotDB:
         """
         self._internal = dbm.open(self.name, 'c')
         return self._internal
-    
+
     def __exit__(self, type, value, traceback):
         """
         On exit we simply close internal db instance
