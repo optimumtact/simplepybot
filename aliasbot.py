@@ -14,7 +14,7 @@ class AliasBot(CommandBot):
     nick = "gamzee"
     def __init__(self, network, port):
         self.commands = [
-                command(r"^%s: quit" %self.nick, self.end),
+                command(r"^%s: quit" % self.nick, self.end),
                 command(r"^%s:" % self.nick, self.honk),
                 command(r"^!learn (?P<abbr>\S+) as (?P<long>\S.*)$", self.learn),
                 command(r"^!forget (?P<abbr>\S+)", self.forget),
