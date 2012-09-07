@@ -2,8 +2,7 @@ from commandbot import *
 
 class LogBot(CommandBot):
     """
-    An IRC bot that can remember up to 100 messages in any channel
-    and offers log searching services
+    An IRC bot that offers log searching services
     
     Written as a runup to quotebot and to test command bots builtin
     logging features ~ Francis
