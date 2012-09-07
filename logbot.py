@@ -6,7 +6,7 @@ class LogBot(CommandBot):
     and offers log searching services
     
     Written as a runup to quotebot and to test command bots builtin
-    logging features
+    logging features ~ Francis
     """
     nick = "LumberJack"
     def __init__(self, network, port):
