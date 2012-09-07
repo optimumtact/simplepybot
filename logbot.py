@@ -25,8 +25,8 @@ class LogBot(CommandBot):
         if m.group("match"):
             try:
                 result = self.search_logs(m.group("match"), match=False)
-                message = "Harvested:{0}, sender:{1}".format(result[2], result[0])
                 if result:
+                    message = "Harvested:{0}, sender:{1}".format(result[2], result[0])
                     self.msg_all(message, targets)
 
                 else:
