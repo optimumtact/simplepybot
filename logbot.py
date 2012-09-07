@@ -12,11 +12,30 @@ class LogBot(CommandBot):
     def __init__(self, network, port):
         self.commands = [
                 command(r"^%s: quit" % self.nick, self.end),
+                command(r"^!harvest many (?P<match>.*)", self.harvest_many),
                 command(r"^!harvest (?P<match>.*)", self.harvest)
                 ]
         super(LogBot, self).__init__(self.nick, network, port)
 
+    def harvest_many(self, source, actions, targets, message, m):
+        """
+        Search the logs for every item that can .search match the m.group("match")
+        value
+        """
+        messages = []
+        if m.group("match"):
+            try:
+                results = self.search_logs_greedy(m.group("match"), match=False)
+                if results:
+                    for result in results:
+                        messages.append ("Harvested:{0}, sender:{1}".format(result[2], result[0]))
+                    self.msg_all(", ".join(messages), targets)
 
+                else:
+                    self.msg_all("No matches found", targets)
+
+            except re.error:
+                self.msg_all("Not a valid regex", targets)
 
     def harvest(self, source, actions, targets, message, m):
         """
