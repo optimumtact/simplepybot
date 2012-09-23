@@ -27,7 +27,7 @@ class LogBot(CommandBot):
                 results = self.search_logs_greedy(m.group("match"), match=False)
                 if results:
                     for result in results:
-                        messages.append (" [message:{0}, sender:{1}] ".format(result[2], result[0]))
+                        messages.append (" [message:{0}, sender:{1}] ".format(result.message, result.name))
                     self.msg_all(r"".join(messages), targets)
 
                 else:
@@ -44,7 +44,7 @@ class LogBot(CommandBot):
             try:
                 result = self.search_logs(m.group("match"), match=False)
                 if result:
-                    message = "Harvested:{0}, sender:{1}".format(result[2], result[0])
+                    message = "Harvested:{0}, sender:{1}".format(result.message, result.name)
                     self.msg_all(message, targets)
 
                 else:
