@@ -38,8 +38,7 @@ class QuoteBot(CommandBot):
 
                     else:
                         #if only one match store the quote along with some supporting info
-                        message = self.store_quote(source, results[0])
-                        self.msg_all(message, targets)
+                        self.store_quote(source, results[0])
 
                 else:
                     self.msg_all("No matches found", targets)
@@ -59,18 +58,18 @@ class QuoteBot(CommandBot):
         #check to see if this user exists and get the id if he does
         #otherwise we store this new user and the current id
         quote_id = 0
-        if entry[0] in self.quotedb:
-            quote_id = self.quotedb[entry[0]]
+        if entry.name in self.quotedb:
+            quote_id = self.quotedb[entry.name]
         
         else:
-            self.quotedb[entry[0]] = quote_id
+            self.quotedb[entry.name] = quote_id
         
         #If this user and id combination already exists we have a serious problem
-        if (entry[0], quote_id) in self.quotedb:
+        if (entry.name, quote_id) in self.quotedb:
             raise Exception("User and ID combination already exists")
         
         else:
-            self.quotedb[(entry[0], quote_id)] = entry
+            self.quotedb[(entry.name, quote_id)] = entry
             return "Quoted: "+ entry
 
     def loop(self):
