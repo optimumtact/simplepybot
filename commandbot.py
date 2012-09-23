@@ -215,9 +215,9 @@ class LogEntry:
     """
     simple storage class representing a logged channel message
     """
-    def __init__(self, nick, message, channel):
+    def __init__(self, name, message, channel):
         self.channel = channel
-        self.nick = nick
+        self.name = name
         self.message = message
         self.timestampe = datetime.now()
 
