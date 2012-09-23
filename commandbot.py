@@ -210,6 +210,15 @@ class CommandBot(IrcSocket):
             self.msg(message, channel)
         self.send('PART ' + channel)
 
+class LogEntry:
+    """
+    simple storage class representing a logged channel message
+    """
+    def __init__(self, nick, message, channel):
+        self.channel = channel
+        self.nick = nick
+        self.message = message
+        self.timestampe = datetime.now()
 
 class BotDB:
     """
