@@ -4,9 +4,9 @@ class LogBot(CommandBot):
     """
     An IRC bot that offers log searching services
     
-    Written as a runup to quotebot and to test command bots builtin
-    logging features ~ Francis
+    Written as a runup to quotebot and to test the frameworks logging features
     """
+
     nick = "LumberJack"
     def __init__(self, network, port):
         self.commands = [
@@ -58,7 +58,7 @@ class LogBot(CommandBot):
         """
         Quit server and kill script
         """
-        self.quit("I might try some woman's clothing")
+        self.quit("Lunch Break")
         sys.exit(0)
 
 hb = LogBot("irc.segfault.net.nz", 6667)

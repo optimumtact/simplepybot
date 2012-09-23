@@ -31,14 +31,14 @@ class CommandBot(IrcSocket):
     '''
     commands = []
 
-    def __init__(self, nick, network, port):
+    def __init__(self, nick, network, port, max_log_len = 100):
         super(CommandBot, self).__init__()
         assert network and port
         self.connect((network, port), nick, "bot@"+network, network, nick)
         self.nick = nick
         self.server = network
         self.port = port
-        self.logs = deque(maxlen=100)
+        self.logs = deque(maxlen = max_log_len)
 
 
     def loop(self):
@@ -66,7 +66,7 @@ class CommandBot(IrcSocket):
         """
         Search the stored logs for a message matching the regex given
         Parameters:
-
+            regex:the regex to search with
         Optional:
             nick: if specified attempts to match the given value to the nick as well
             match: controls wether the regex matcher uses a .search or a .match as per  python re specs
@@ -75,7 +75,7 @@ class CommandBot(IrcSocket):
         it returns None
 
         This method does not capture any errors, so as to allow the bot calling to define what happens when
-        the regex compile fails (a re.error is throw, so catch that)
+        the regex compile fails (a re.error is thrown, so catch that)
         """
         for entry in self.logs:
 
@@ -103,10 +103,10 @@ class CommandBot(IrcSocket):
         Search the stored logs for a message matching the regex given, on a match keeps matching
         and returns a list of all matching logs
         Parameters:
-
+            regex: the regex to search the logs with
         Optional:
             nick: if specified attempts to match the given value to the nick as well
-            match: controls wether the regex matcher uses a .search or a .match as per  python re specs
+            match: controls whether the regex matcher uses a .search or a .match as per python re specs
         
         Returns a tuple in the format (senders nick, message receivers, message) if a match is found, otherwise
         it returns None
@@ -158,7 +158,9 @@ class CommandBot(IrcSocket):
 
     def msgs_all(self, msgs, channels):
         """
-        Accepts a list of msgs to send to a list of channels
+        Accepts a list of messages to send to a list of channels
+        msgs: A list of messages to send
+        channels: A list of targets to send it to
         """
         for channel in channels:
             for message in msgs:
@@ -167,6 +169,8 @@ class CommandBot(IrcSocket):
     def msg_all(self, message, channels):
         """
         Accepts a message to send to a list of channels
+        message: the message to send
+        channels: A list of targets to send it to
         """
         for channel in channels:
             self.msg(message, channel)
@@ -174,27 +178,32 @@ class CommandBot(IrcSocket):
     def msg(self, message, channel):
         '''
         Send a message to a specific target.
+        message: the message to send
+        channel: the target to send it to
         '''
         self.send('PRIVMSG ' + channel + ' :' + message)
 
     def join(self, channel):
         '''
         Join a channel.
-
+        channel: the channel to join
         The channel should contain one or more # symbols as needed.
+
         '''
         self.send('JOIN ' + channel)
 
     def quit(self, message):
         '''
         Disconnects from a server with a given QUIT message.
+        message: message to display with quit
         '''
         self.send('QUIT :' + message)
 
-    def leave(self, channel, message):
+    def leave(self, channel, message=None):
         '''
         Leaves a channel, optionally sending a message to the channel first.
-
+        channel: Channel to leave
+        message: optional message to send first
         XXX: The message should probably be the PART message
         '''
         if message:
