@@ -225,6 +225,9 @@ class LogEntry:
     def __str__(self):
         return "<{0}> {1}".format(self.name, self.message)
 
+    def __repr__(self):
+        return "name:{0}, message:{1}, channel:{2}, timestamp{3}".format(self.name, self.message, self.channel, self.timestamp)
+
 class BotDB:
     """
     Trivial wrapper class over dbm to enable use in with statements.
