@@ -60,7 +60,8 @@ class CommandBot(IrcSocket):
         splitting the nick out of the irc senders representation (nick!username@server)
         """
         senders_name = source.split('!')[0]
-        self.logs.append((senders_name, targets, message))
+        #store as a new log entry!
+        self.logs.append(LogEntry(senders_name, message, targets))
 
     def search_logs(self, regex, name=None, match = True):
         """
@@ -80,14 +81,14 @@ class CommandBot(IrcSocket):
         for entry in self.logs:
 
             if match:
-                result = re.match(regex, entry[2])
+                result = re.match(regex, entry.message)
             
             else:
-                result = re.search(regex, entry[2])
+                result = re.search(regex, entry.message)
 
             if result:
                 if name:
-                    if entry[0] == name:
+                    if entry.name == name:
                         return entry
 
                     else:
@@ -117,14 +118,14 @@ class CommandBot(IrcSocket):
         for entry in self.logs:
 
             if match:
-                result = re.match(regex, entry[2])
+                result = re.match(regex, entry.message)
             
             else:
-                result = re.search(regex, entry[2])
+                result = re.search(regex, entry.message)
 
             if result:
                 if name:
-                    if entry[0] == name:
+                    if entry.name == name:
                         all_matches.append(entry)
 
                     else:
