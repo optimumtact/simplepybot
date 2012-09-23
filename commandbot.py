@@ -219,7 +219,11 @@ class LogEntry:
         self.channel = channel
         self.name = name
         self.message = message
-        self.timestampe = datetime.now()
+        #TODO once I have python api (no internet right now) make this the right call
+        self.timestamp = datetime.now()
+
+    def __str__(self):
+        return "<{0}> {1}".format(self.name, self.message)
 
 class BotDB:
     """
