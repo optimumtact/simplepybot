@@ -18,8 +18,8 @@ class QuoteBot(CommandBot):
     nick = "quotebot"
     def __init__(self, network, port):
         self.commands = [
-        command(r"^!quote (?P<match>[\w\s]+)", self.find_and_remember_quote)
-        ]
+                command(r"^!quote (?P<match>[\w\s]+)", self.find_and_remember_quote)
+                ]
         self.network = network
         self.port = port
         super(QuoteBot, self).__init__(self.nick, self.network, self.port)
@@ -30,9 +30,8 @@ class QuoteBot(CommandBot):
         match it warns you and displays them, if it finds one match it stores that as a
         quote. If no match is found it tells you so
         """
-        if m.group("match"):
-            try:
-                results = self.search_logs_greedy(m.group("match"), match=False)
+        try:
+            results = self.search_logs_greedy(m.group("match"), match=False)
                 if results:
                     if len(results) > 1:
                         self.msg_all("Too many matches found, please refine your search", targets)
@@ -42,18 +41,37 @@ class QuoteBot(CommandBot):
                         message = self.store_quote(source, results[0])
                         self.msg_all(message, targets)
 
-
                 else:
                     self.msg_all("No matches found", targets)
 
-            except re.error:
-                self.msg_all("Not a valid regex, you shouldn't be able to trigger this, if you did, well, good job", targets)
-        else:
-            self.msg_all("You didn't even match the regex, this should be super impossible, seeing this means something is very wrong", targets)
+        except re.error:
+            self.msg_all("Not a valid regex, you shouldn't be able to trigger this, if you did, well, good job", targets)
 
-    def store_quote(self, source, logged_message):
-        #not yet doing anything
-        return "Quote not stored, but at least it works (sort of)"
+    def store_quote(self, source, entry):
+        """
+        Takes a log entry and stores it in the quote database quotedb. They are indexed by a tuple of (nick, id) where
+        id is an number, this number represents the latest id allowed and is stored in the dict under the value of nick
+        
+        parameters
+        source: user who requested the quote be stored
+        entry: a log entry in the form of (senders_name, targets, message, timestamp)
+        """
+        #check to see if this user exists and get the id if he does
+        #otherwise we store this new user and the current id
+        quote_id = 0
+        if entry[0] in self.quotedb:
+            quote_id = self.quotedb[entry[0]]
+        
+        else:
+            self.quotedb[entry[0]] = quote_id
+        
+        #If this user and id combination already exists we have a serious problem
+        if (entry[0], quote_id) in self.quotedb:
+            raise Exception("User and ID combination already exists")
+        
+        else:
+            self.quotedb[(entry[0], quote_id)] = entry
+            return "Quoted: "+ entry
 
     def loop(self):
         with BotDB('stored_quotes') as self.quotedb:
