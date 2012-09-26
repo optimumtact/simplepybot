@@ -11,13 +11,12 @@ class QuoteBot(CommandBot):
         !quotes for user: return list of quotes for user
         !quote id: return quote with given id
 
-    It's about time I got around to this, the general plan is to have the quotes stored in a dbm instance by username, there will hopefully
-    be some secondary indexes, such as ID and Message to also be able to search by, depends on how much effort I put in after getting the basics
-    up
+    It's about time I got around to this, the general plan is to have the quotes stored in a db
     """
     nick = "quotebot"
     def __init__(self, network, port):
         self.commands = [
+                command(r"^!quote (?P<match>[\w\s]+) by (?P<nickname>\s+)", self.find_and_remember_quote)
                 command(r"^!quote (?P<match>[\w\s]+)", self.find_and_remember_quote)
                 ]
         self.network = network
@@ -31,20 +30,25 @@ class QuoteBot(CommandBot):
         quote. If no match is found it tells you so
         """
         try:
-            results = self.search_logs_greedy(m.group("match"), match=False)
-                if results:
-                    if len(results) > 1:
-                        self.msg_all("Too many matches found, please refine your search", targets)
+            if m.group("nickname"):
+                results = self.search_logs_greedy(m.group("match", match=False, name = m.group("nickname")))
 
-                    else:
-                        #if only one match store the quote along with some supporting info
-                        self.store_quote(source, results[0])
+            else:
+                results = self.search_logs_greedy(m.group("match"), match=False)
+
+            if results:
+                if len(results) > 1:
+                    self.msg_all("Too many matches found, please refine your search", targets)
 
                 else:
-                    self.msg_all("No matches found", targets)
+                    #if only one match store the quote along with some supporting info
+                    self.store_quote(source, results[0])
+
+            else:
+                self.msg_all("No matches found", targets)
 
         except re.error:
-            self.msg_all("Not a valid regex, you shouldn't be able to trigger this, if you did, well, good job", targets)
+            self.msg_all("Not a valid regex, please try a new query", targets)
 
     def store_quote(self, source, entry):
         """
