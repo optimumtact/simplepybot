@@ -53,27 +53,31 @@ class QuoteBot(CommandBot):
     def store_quote(self, source, entry):
         """
         Takes a log entry and stores it in the quote database quotedb. They are indexed by a tuple of (nick, id) where
-        id is an number, this number represents the latest id allowed and is stored in the dict under the value of nick
-        
-        parameters
-        source: user who requested the quote be stored
-        entry: a log entry in the form of (senders_name, targets, message, timestamp)
+        id is an number, furthermore under the key nick there is a QuoteData object which is responsible for managing
+        the id's for the user who's nick it is stored under, it supports getting a new id and freeing old ones, as well
+        as returning a copy of all the id's that that user has quotes stored under
+
+            source: user who requested the quote be stored
+            entry: a log entry in the form of (senders_name, targets, message, timestamp)
         """
         #check to see if this user exists and get the id if he does
         #otherwise we store this new user and the current id
-        quote_id = 0
+        quote_id = 1
         if entry.name in self.quotedb:
-            quote_id = self.quotedb[entry.name]
+            quote_id = self.quotedb[entry.name].get_next_id()
         
         else:
-            self.quotedb[entry.name] = quote_id
+            #initialise this new users necessary data
+            self.quotedb[entry.name] = QuoteData()
         
         #If this user and id combination already exists we have a serious problem
         if (entry.name, quote_id) in self.quotedb:
+            #TODO raise a nicer exception here
             raise Exception("User and ID combination already exists")
         
         else:
             self.quotedb[(entry.name, quote_id)] = entry
+            self.quotedb[entry.name] = quote_id + 1
             return "Quoted: "+ entry
 
     def loop(self):
@@ -84,3 +88,53 @@ class QuoteBot(CommandBot):
 qb = QuoteBot("irc.segfault.net.nz", 6667)
 qb.join("#bots")
 qb.loop()
+
+
+class QuoteData:
+    """
+    This class handles the id management for each nick in the database
+    it provide support methods for freeing an id, getting the next id
+    to use and providing a list of all id's.
+    """
+
+    def __init__(self):
+        self.current_id = 0
+        self.freed = list()
+        self.in_use = list()
+
+    def get_next_id(self):
+        """
+        Return the next id for use as part of the (nick, id) tuple
+        As well as rememebering that it is in use
+        """
+        quote_id = 0
+
+        #if there are any freed id's floating around we should use them
+        #over advancing the current_id counter, this helps decrease the
+        #chances of eventually running out of id's
+        if len(self.freed):
+            quote_id = self.freed.pop()
+            self.in_use.append(quote_id)
+            return quote_id
+        
+        #we use the current id + 1 and increment the current id counter
+        else:
+            quote_id = self.current_id + 1
+            self.current_id += 1
+            self.in_use.append(quote_id)
+            return quote_id
+
+    def free_id(self, quote_id):
+        if quote_id not in self.in_use:
+            return False
+
+        else:
+            self.in_use.remove(quote_id)
+            self.freed.append(quote_id)
+            return True
+
+    def get_all_ids(self):
+        #TODO perhaps make this a copy of the list? I guess if anyone is
+        #mad enough to remove and add id's externally they probably
+        #have a good reason
+        return self.in_use
