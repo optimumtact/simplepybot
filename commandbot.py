@@ -3,6 +3,7 @@ import dbm
 import sys
 import re
 from time import sleep
+import datetime
 from collections import deque
 
 
@@ -219,8 +220,7 @@ class LogEntry:
         self.channel = channel
         self.name = name
         self.message = message
-        #TODO once I have python api (no internet right now) make this the right call
-        self.timestamp = datetime.now()
+        self.timestamp = datetime.datetime.utcnow()
 
     def __str__(self):
         return "<{0}> {1}".format(self.name, self.message)
