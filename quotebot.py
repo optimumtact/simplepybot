@@ -89,7 +89,10 @@ qb = QuoteBot("irc.segfault.net.nz", 6667)
 qb.join("#bots")
 qb.loop()
 
-
+#TODO think about converting QuoteData to store quotes as well
+#making it a one stop shop for a single nick, of course this would complicate
+#searching the entire quote database so that would be a tradeoff, what is more
+#common?
 class QuoteData:
     """
     This class handles the id management for each nick in the database

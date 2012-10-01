@@ -9,6 +9,7 @@ class IrcSocket(object):
     Consists of a few basic functions aside from sending/receiving.
     Sending NICK, USER, message parsing, and sending PONG responses.
     '''
+    #Really long regex to match and split most irc messages correctly (No guarantees though as I haven't fully roadtested it)
     ircmsg = re.compile(r"(?P<prefix>:\S+ )?(?P<command>(\w+|\d{3}))(?P<params>( [^:]\S+)*)(?P<postfix> :.*)?")
 
     def __init__(self, b_size = 1024):
