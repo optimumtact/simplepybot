@@ -7,31 +7,65 @@ class QuoteBot(CommandBot):
     Supported commands:
         !quote some string: search the backlog for any message matching some string and store that as a quote
         !quote some string by user: search the backlog for any message matching some string and made by user and store that as a quote
-        !last quotes: last 5 quotes
         !quotes for user: return list of quotes for user
         !quote id: return quote with given id
 
-    It's about time I got around to this, the general plan is to have the quotes stored in a db
     """
     nick = "quotebot"
     def __init__(self, network, port):
         self.commands = [
-                command(r"^!quote (?P<match>[\w\s]+) by (?P<nickname>\s+)", self.find_and_remember_quote)
-                command(r"^!quote (?P<match>[\w\s]+)", self.find_and_remember_quote)
+                command(r"^!quote (?P<match>[\w\s]+) by (?P<nick>\s+)", self.find_and_remember_quote),
+                command(r"^!quote (?P<match>[\w\s]+)", self.find_and_remember_quote),
+                command(r"!quotes for (?P<nick>\s+)", self.quote_ids_for_name),
+                command(r"!quote (?P<id>\d+) by (?P<nick>\s+)", self.quote_by_id),
                 ]
         self.network = network
         self.port = port
         super(QuoteBot, self).__init__(self.nick, self.network, self.port)
+    
+    def quote_by_id(self, source, action, targets, message, m):
+        """
+        Determine if the id given by m.group("id") is assigned for m.group("nick")
+        and then return the quote stored under that combination
+        """
+        nick = m.group("nick")
+        quote_id = m.group("id")
+        if nick in self.quotedb:
+            quote_ids = self.quotedb[nick].get_all_ids()
+            if quote_id in quote_ids:
+                self.msg_all(str(self.quotedb[(nick, quote_id)]), targets)
+
+            else:
+                self.msg_all("There is no quote with that id for this user", targets)
+
+        else:
+            self.msg_all("There are no quotes for that user", targets)
+
+    def quote_ids_for_name(self, source, action, targets, message, m):
+        """
+        Determine if the name stored in m.group("nick") has quotes stored in the quotedb
+        and is so return a list of them to the channel for display
+        """
+        nick = m.group("nick")
+        if nick in self.quotedb:
+           self.msg_all(",".join(self.quotedb[nick].get_all_ids()), targets)
+
+        else:
+            self.msg_all("No ID's for nickname:"+nick)
+
 
     def find_and_remember_quote(self, source, action, targets, message, m):
         """
         Searches the channel backlog with the given regex, if it finds more than one
         match it warns you and displays them, if it finds one match it stores that as a
         quote. If no match is found it tells you so
+
+        regex is given by m.group("match") and there is an optional m.group("nick")
+        which may be present, if it is then you should match only for that nickname
         """
         try:
-            if m.group("nickname"):
-                results = self.search_logs_greedy(m.group("match", match=False, name = m.group("nickname")))
+            if m.group("nick"):
+                results = self.search_logs_greedy(m.group("match", match=False, name = m.group("nick")))
 
             else:
                 results = self.search_logs_greedy(m.group("match"), match=False)
@@ -42,7 +76,9 @@ class QuoteBot(CommandBot):
 
                 else:
                     #if only one match store the quote along with some supporting info
-                    self.store_quote(source, results[0])
+                    #reminder: results[0] is a log entry instance, see commandbot for source of this
+                    entry = self.store_quote(source, results[0])
+                    self.msg_all("Stored:"+entry, targets)
 
             else:
                 self.msg_all("No matches found", targets)
@@ -57,12 +93,12 @@ class QuoteBot(CommandBot):
         the id's for the user who's nick it is stored under, it supports getting a new id and freeing old ones, as well
         as returning a copy of all the id's that that user has quotes stored under
 
-            source: user who requested the quote be stored
-            entry: a log entry in the form of (senders_name, targets, message, timestamp)
+        source: user who requested the quote be stored
+        entry: a log entry in the form of (senders_name, targets, message, timestamp)
         """
         #check to see if this user exists and get the id if he does
         #otherwise we store this new user and the current id
-        quote_id = 1
+        quote_id = 0
         if entry.name in self.quotedb:
             quote_id = self.quotedb[entry.name].get_next_id()
         
@@ -78,7 +114,7 @@ class QuoteBot(CommandBot):
         else:
             self.quotedb[(entry.name, quote_id)] = entry
             self.quotedb[entry.name] = quote_id + 1
-            return "Quoted: "+ entry
+            return entry
 
     def loop(self):
         with BotDB('stored_quotes') as self.quotedb:
@@ -89,10 +125,7 @@ qb = QuoteBot("irc.segfault.net.nz", 6667)
 qb.join("#bots")
 qb.loop()
 
-#TODO think about converting QuoteData to store quotes as well
-#making it a one stop shop for a single nick, of course this would complicate
-#searching the entire quote database so that would be a tradeoff, what is more
-#common?
+
 class QuoteData:
     """
     This class handles the id management for each nick in the database
@@ -137,7 +170,4 @@ class QuoteData:
             return True
 
     def get_all_ids(self):
-        #TODO perhaps make this a copy of the list? I guess if anyone is
-        #mad enough to remove and add id's externally they probably
-        #have a good reason
         return self.in_use
