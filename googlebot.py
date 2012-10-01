@@ -26,8 +26,8 @@ class GoogleBot(CommandBot):
         sys.exit(0)
 
     def return_search_link(self, source, action, targets, message, m):
-        if m.group("searchterms"):
-            self.msg_all("http://lmgtfy.com/?q="+m.group("searchterms"), targets)
+        search_terms = m.group("searchterms").replace(" ", "+")
+        self.msg_all("http://lmgtfy.com/?q="+m.group("searchterms"), targets)
 
 hb = GoogleBot("irc.segfault.net.nz", 6667)
 hb.join("#cave")
