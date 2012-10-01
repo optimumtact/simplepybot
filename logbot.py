@@ -3,7 +3,7 @@ from commandbot import *
 class LogBot(CommandBot):
     """
     An IRC bot that offers log searching services
-    
+
     Written as a runup to quotebot and to test the frameworks logging features
     """
 
@@ -22,9 +22,8 @@ class LogBot(CommandBot):
         value
         """
         messages = []
-        if m.group("match"):
-            try:
-                results = self.search_logs_greedy(m.group("match"), match=False)
+        try:
+            results = self.search_logs_greedy(m.group("match"), match=False)
                 if results:
                     for result in results:
                         messages.append (" [message:{0}, sender:{1}] ".format(result.message, result.name))
@@ -33,16 +32,15 @@ class LogBot(CommandBot):
                 else:
                     self.msg_all("No matches found", targets)
 
-            except re.error:
-                self.msg_all("Not a valid regex", targets)
+        except re.error:
+            self.msg_all("Not a valid regex", targets)
 
     def harvest(self, source, actions, targets, message, m):
         """
         Search the logs for anything matching the m.group("match") value
         """
-        if m.group("match"):
-            try:
-                result = self.search_logs(m.group("match"), match=False)
+        try:
+            result = self.search_logs(m.group("match"), match=False)
                 if result:
                     message = "Harvested:{0}, sender:{1}".format(result.message, result.name)
                     self.msg_all(message, targets)
@@ -50,8 +48,8 @@ class LogBot(CommandBot):
                 else:
                     self.msg_all("No match found", targets)
 
-            except re.error:
-                self.msg_all("Not a valid regex", targets)
+        except re.error:
+            self.msg_all("Not a valid regex", targets)
 
 
     def end(self, source, actions, targets, message, m):

@@ -5,9 +5,8 @@ import sys
 class AliasBot(CommandBot):
     '''
     An IRC Bot that can store, retrieve, and delete items.
-    This bot stands as an example to all and sundry
-    Coded by TrueshiftBlue
-
+    This bot stands as the simplest example of how to use
+    the framework
     Contains a simple easter egg - HONK.
     '''
     honk = "HONK"
