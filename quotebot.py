@@ -1,4 +1,5 @@
 from commandbot import *
+import shelve
 
 class QuoteBot(CommandBot):
     """
@@ -65,7 +66,7 @@ class QuoteBot(CommandBot):
 
                 else:
                     entry = self.store_quote(source, results[0])
-                    self.msg_all('Stored:'+entry, targets)
+                    self.msg_all('Stored:'+str(entry), targets)
 
             else:
                 self.msg_all('No match found, please try another query', targets)
@@ -92,7 +93,7 @@ class QuoteBot(CommandBot):
                     #if only one match store the quote along with some supporting info
                     #reminder: results[0] is a log entry instance, see commandbot for source of this
                     entry = self.store_quote(source, results[0])
-                    self.msg_all("Stored:"+entry, targets)
+                    self.msg_all("Stored:"+str(entry), targets)
 
             else:
                 self.msg_all('No match found, please try another query', targets)
@@ -113,25 +114,28 @@ class QuoteBot(CommandBot):
         #check to see if this user exists and get the id if he does
         #otherwise we store this new user and the current id
         quote_id = 0
-        if entry.name in self.quotedb:
-            quote_id = self.quotedb[entry.name].get_next_id()
+        #convert to string as shelve+dbm doesn't support unicode
+        name = str(entry.name)
+        if name in self.quotedb:
+            quote_id = self.quotedb[name].get_next_id()
         
         else:
             #initialise this new users necessary data
-            self.quotedb[entry.name] = QuoteData()
+            self.quotedb[name] = QuoteData()
         
+        #convert the combo of entry name + quote_id into a string to use as the index
+        index = str(entry.name, quote_id)
         #If this user and id combination already exists we have a serious problem
-        if (entry.name, quote_id) in self.quotedb:
+        if index in self.quotedb:
             #TODO raise a nicer exception here
             raise Exception("User and ID combination already exists")
         
         else:
-            self.quotedb[(entry.name, quote_id)] = entry
-            self.quotedb[entry.name] = quote_id + 1
+            self.quotedb[index] = entry
             return entry
 
     def loop(self):
-        with BotDB('stored_quotes') as self.quotedb:
+        with BotShelf('stored_quotes') as self.quotedb:
             super(QuoteBot, self).loop()
 
 
@@ -166,7 +170,7 @@ class QuoteData:
         #we use the current id + 1 and increment the current id counter
         else:
             quote_id = self.current_id + 1
-            self.current_id += 1
+            self.current_id = quote_id
             self.in_use.append(quote_id)
             return quote_id
 
@@ -181,6 +185,32 @@ class QuoteData:
 
     def get_all_ids(self):
         return self.in_use
+
+class BotShelf:
+    '''
+    Wrapper class over shelve to allow it to be used
+    in with statements
+    '''
+
+    def __init__(self, name):
+        '''
+        Set up new BotShelf
+        '''
+        self.name = name
+
+    def __enter__(self):
+        '''
+        Open shelve instance with self.name as filename
+        creating it if it doesn't already exist
+        '''
+        self._internal = shelve.open(self.name, 'c')
+        return self._internal
+
+    def __exit__(self, type, value, traceback):
+        '''
+        On exit close internal db instance
+        '''
+        self._internal.close()
 
 # run bot
 qb = QuoteBot("irc.segfault.net.nz", 6667)
