@@ -59,12 +59,13 @@ class QuoteBot(CommandBot):
         '''
         try:
             results = self.search_logs_greedy(m.group('match'), match = False, nick = m.group('nick'))
-            if len(results) > 1:
-                self.msg_all('Too many matches found, please refine your search', targets)
+            if results:
+                if len(results) > 1:
+                    self.msg_all('Too many matches found, please refine your search', targets)
 
-            elif len(results == 1:
-                entry = self.store_quote(source, results[0])
-                self.msg_all('Stored:'+entry, targets)
+                else len(results == 1:
+                    entry = self.store_quote(source, results[0])
+                    self.msg_all('Stored:'+entry, targets)
 
             else:
                 self.msg_all('No match found, please try another query', targets)
@@ -94,10 +95,10 @@ class QuoteBot(CommandBot):
                     self.msg_all("Stored:"+entry, targets)
 
             else:
-                self.msg_all("No matches found", targets)
+                self.msg_all('No match found, please try another query', targets)
 
         except re.error:
-            self.msg_all("Not a valid regex, please try a new query", targets)
+            self.msg_all('Not a valid regex, please try another query', targets)
 
     def store_quote(self, source, entry):
         """
