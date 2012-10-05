@@ -6,7 +6,7 @@ from time import sleep
 import datetime
 from collections import deque
 
-
+#TODO keep a list of users in channels you are in and their permissions, tracking quits+joins and new ops
 def command(expr, func):
     '''
     Helper function that constructs a command suitable for CommandBot.

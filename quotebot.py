@@ -37,10 +37,6 @@ class QuoteBot(CommandBot):
             quote_ids = self.quotedb[nick].get_all_ids()
             if quote_id in quote_ids:
                 index = str((nick, quote_id))
-                for key in self.quotedb:
-                    print(key, self.quotedb[key])
-
-                print('index', index)
                 if index in self.quotedb:
                     self.msg_all(str(self.quotedb[index]), targets)
 
@@ -64,7 +60,7 @@ class QuoteBot(CommandBot):
             strids = list()
             for x in ids:
                 strids.append(str(x))
-            self.msg_all(",".join(strids), targets)
+            self.msg_all('['+','.join(strids)+']', targets)
 
         else:
             self.msg_all("No ID's for nickname:"+nick)
