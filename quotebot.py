@@ -134,10 +134,6 @@ class QuoteBot(CommandBot):
         with BotDB('stored_quotes') as self.quotedb:
             super(QuoteBot, self).loop()
 
-# run bot
-qb = QuoteBot("irc.segfault.net.nz", 6667)
-qb.join("#bots")
-qb.loop()
 
 
 class QuoteData:
@@ -185,3 +181,8 @@ class QuoteData:
 
     def get_all_ids(self):
         return self.in_use
+
+# run bot
+qb = QuoteBot("irc.segfault.net.nz", 6667)
+qb.join("#bots")
+qb.loop()
