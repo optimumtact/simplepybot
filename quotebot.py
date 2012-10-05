@@ -63,7 +63,7 @@ class QuoteBot(CommandBot):
                 if len(results) > 1:
                     self.msg_all('Too many matches found, please refine your search', targets)
 
-                else len(results == 1:
+                else:
                     entry = self.store_quote(source, results[0])
                     self.msg_all('Stored:'+entry, targets)
 
