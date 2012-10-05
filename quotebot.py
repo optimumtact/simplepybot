@@ -1,6 +1,8 @@
 from commandbot import *
 import shelve
 
+#TODO implement delete command for quotes, clean up quote command syntax
+#TODO add a quit command
 class QuoteBot(CommandBot):
     """
     A bot that provides quote services to a channel
@@ -15,10 +17,10 @@ class QuoteBot(CommandBot):
     nick = "quotebot"
     def __init__(self, network, port):
         self.commands = [
-                command(r"^!quote (?P<match>[\w\s]+) by (?P<nick>\s+)", self.find_and_remember_quote_by_name),
+                command(r"!quote (?P<id>\d+) by (?P<nick>\S+)", self.quote_by_id),
+                command(r"^!quote (?P<match>[\w\s]+) by (?P<nick>\S+)", self.find_and_remember_quote_by_name),
+                command(r"!quotes for (?P<nick>\S+)", self.quote_ids_for_name),
                 command(r"^!quote (?P<match>[\w\s]+)", self.find_and_remember_quote),
-                command(r"!quotes for (?P<nick>\s+)", self.quote_ids_for_name),
-                command(r"!quote (?P<id>\d+) by (?P<nick>\s+)", self.quote_by_id),
                 ]
         self.network = network
         self.port = port
@@ -29,12 +31,21 @@ class QuoteBot(CommandBot):
         Determine if the id given by m.group("id") is assigned for m.group("nick")
         and then return the quote stored under that combination
         """
-        nick = m.group("nick")
-        quote_id = m.group("id")
+        nick = str(m.group("nick"))
+        quote_id = int(m.group("id"))
         if nick in self.quotedb:
             quote_ids = self.quotedb[nick].get_all_ids()
             if quote_id in quote_ids:
-                self.msg_all(str(self.quotedb[(nick, quote_id)]), targets)
+                index = str((nick, quote_id))
+                for key in self.quotedb:
+                    print(key, self.quotedb[key])
+
+                print('index', index)
+                if index in self.quotedb:
+                    self.msg_all(str(self.quotedb[index]), targets)
+
+                else:
+                    self.msg_all('error', targets)
 
             else:
                 self.msg_all("There is no quote with that id for this user", targets)
@@ -47,9 +58,13 @@ class QuoteBot(CommandBot):
         Determine if the name stored in m.group("nick") has quotes stored in the quotedb
         and is so return a list of them to the channel for display
         """
-        nick = m.group("nick")
+        nick = str(m.group("nick"))
         if nick in self.quotedb:
-           self.msg_all(",".join(self.quotedb[nick].get_all_ids()), targets)
+            ids = self.quotedb[nick].get_all_ids()
+            strids = list()
+            for x in ids:
+                strids.append(str(x))
+            self.msg_all(",".join(strids), targets)
 
         else:
             self.msg_all("No ID's for nickname:"+nick)
@@ -59,7 +74,7 @@ class QuoteBot(CommandBot):
         Search the channel and find the quote to store
         '''
         try:
-            results = self.search_logs_greedy(m.group('match'), match = False, nick = m.group('nick'))
+            results = self.search_logs_greedy(m.group('match'), name = m.group('nick'))
             if results:
                 if len(results) > 1:
                     self.msg_all('Too many matches found, please refine your search', targets)
@@ -84,7 +99,7 @@ class QuoteBot(CommandBot):
         regex is given by m.group("match")
         """
         try:
-            results = self.search_logs_greedy(m.group("match"), match=False)
+            results = self.search_logs_greedy(m.group("match"))
             if results:
                 if len(results) > 1:
                     self.msg_all("Too many matches found, please refine your search", targets)
@@ -117,14 +132,16 @@ class QuoteBot(CommandBot):
         #convert to string as shelve+dbm doesn't support unicode
         name = str(entry.name)
         if name in self.quotedb:
-            quote_id = self.quotedb[name].get_next_id()
+            quote_data = self.quotedb[name]
+            quote_id = quote_data.get_next_id()
+            self.quotedb[name] = quote_data
         
         else:
             #initialise this new users necessary data
-            self.quotedb[name] = QuoteData()
+            self.quotedb[name] = QuoteData(name)
         
         #convert the combo of entry name + quote_id into a string to use as the index
-        index = str(entry.name, quote_id)
+        index = str((name, quote_id))
         #If this user and id combination already exists we have a serious problem
         if index in self.quotedb:
             #TODO raise a nicer exception here
@@ -147,10 +164,12 @@ class QuoteData:
     to use and providing a list of all id's.
     """
 
-    def __init__(self):
+    def __init__(self, nick):
         self.current_id = 0
+        self.nick = nick
         self.freed = list()
         self.in_use = list()
+        self.in_use.append(self.current_id)
 
     def get_next_id(self):
         """
@@ -185,6 +204,9 @@ class QuoteData:
 
     def get_all_ids(self):
         return self.in_use
+
+    def __str__(self):
+        return self.nick+":"+str(self.current_id)
 
 class BotShelf:
     '''
