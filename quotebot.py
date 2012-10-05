@@ -14,7 +14,7 @@ class QuoteBot(CommandBot):
     nick = "quotebot"
     def __init__(self, network, port):
         self.commands = [
-                command(r"^!quote (?P<match>[\w\s]+) by (?P<nick>\s+)", self.find_and_remember_quote),
+                command(r"^!quote (?P<match>[\w\s]+) by (?P<nick>\s+)", self.find_and_remember_quote_by_name),
                 command(r"^!quote (?P<match>[\w\s]+)", self.find_and_remember_quote),
                 command(r"!quotes for (?P<nick>\s+)", self.quote_ids_for_name),
                 command(r"!quote (?P<id>\d+) by (?P<nick>\s+)", self.quote_by_id),
@@ -53,6 +53,25 @@ class QuoteBot(CommandBot):
         else:
             self.msg_all("No ID's for nickname:"+nick)
 
+    def find_and_remember_quote_by_name(self, source, action, targets, message, m):
+        '''
+        Search the channel and find the quote to store
+        '''
+        try:
+            results = self.search_logs_greedy(m.group('match'), match = False, nick = m.group('nick'))
+            if len(results) > 1:
+                self.msg_all('Too many matches found, please refine your search', targets)
+
+            elif len(results == 1:
+                entry = self.store_quote(source, results[0])
+                self.msg_all('Stored:'+entry, targets)
+
+            else:
+                self.msg_all('No match found, please try another query', targets)
+
+        except re.error:
+            self.msg_all('Not a valid regex, please try another query', targets)
+
 
     def find_and_remember_quote(self, source, action, targets, message, m):
         """
@@ -60,16 +79,10 @@ class QuoteBot(CommandBot):
         match it warns you and displays them, if it finds one match it stores that as a
         quote. If no match is found it tells you so
 
-        regex is given by m.group("match") and there is an optional m.group("nick")
-        which may be present, if it is then you should match only for that nickname
+        regex is given by m.group("match")
         """
         try:
-            if m.group("nick"):
-                results = self.search_logs_greedy(m.group("match", match=False, name = m.group("nick")))
-
-            else:
-                results = self.search_logs_greedy(m.group("match"), match=False)
-
+            results = self.search_logs_greedy(m.group("match"), match=False)
             if results:
                 if len(results) > 1:
                     self.msg_all("Too many matches found, please refine your search", targets)
