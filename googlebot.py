@@ -22,7 +22,7 @@ class GoogleBot(CommandBot):
         """
         Quits the server!
         """
-        self.quit("No more snarkiness")
+        self.quit("Goodbye")
         sys.exit(0)
 
     def return_search_link(self, source, action, targets, message, m):
