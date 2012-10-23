@@ -1,17 +1,15 @@
 from commandbot import *
 
-class LogBot(CommandBot):
-    """
-    An IRC bot that offers log searching services
+class LogModule():
+    '''
+    An IRC module that offers log searching services
+    Written as a runup to a quote module and to test 
+    the frameworks logging features
+    '''
 
-    Written as a runup to quotebot and to test the frameworks logging features
-    """
-
-    nick = "LumberJack"
     def __init__(self, bot):
         self.bot = bot
         self.commands = [
-                command(r"^%s: quit" % self.nick, self.end),
                 command(r"^!harvest many (?P<match>.*)", self.harvest_many),
                 command(r"^!harvest (?P<match>.*)", self.harvest)
                 ]
@@ -53,14 +51,8 @@ class LogBot(CommandBot):
             self.bot.msg_all("Not a valid regex", targets)
 
 
-    def end(self, source, actions, targets, message, m):
-        """
-        Quit server and kill script
-        """
-        self.bot.quit("Lunch Break")
-        sys.exit(0)
 
-bot = CommandBot('Harvester', 'irc.segfault.net.nz', 6667)
+bot = CommandBot('LumberJack', 'irc.segfault.net.nz', 6667)
 bot.join('#bots')
 hb = LogBot(bot)
 bot.add_module('Logging', hb)
