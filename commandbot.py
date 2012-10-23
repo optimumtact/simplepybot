@@ -60,6 +60,15 @@ class CommandBot(IrcSocket):
 
         return self.modules[name]
 
+    def has_module(self, name):
+        '''
+        Returns true if the bot has this module or false otherwise
+        '''
+        if name not in self.modules:
+            return False
+        
+        else:
+            return True
 
     def loop(self):
         '''
