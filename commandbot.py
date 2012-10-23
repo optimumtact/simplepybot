@@ -6,7 +6,6 @@ from time import sleep
 import datetime
 from collections import deque
 
-#TODO keep a list of users in channels you are in and their permissions, tracking quits+joins and new ops
 def command(expr, func):
     '''
     Helper function that constructs a command suitable for CommandBot.
@@ -35,11 +34,31 @@ class CommandBot(IrcSocket):
     def __init__(self, nick, network, port, max_log_len = 100):
         super(CommandBot, self).__init__()
         assert network and port
+        self.modules = dict()
         self.connect((network, port), nick, "bot@"+network, network, nick)
         self.nick = nick
         self.server = network
         self.port = port
         self.logs = deque(maxlen = max_log_len)
+
+    def add_module(self, name, module):
+        '''
+        Add the given module to the modules dictionary under the given name
+        Raises a key error if the name is already in use
+        '''
+        if name in self.modules:
+            raise KeyError("Module name:{0} already in use".format(name))
+        self.modules[name] = module
+
+    def get_module(self, name):
+        '''
+        Returns the module stored in module dict under the key given by name
+        Raises a key error if there is no module with that name
+        '''
+        if name not in self.modules:
+            raise KeyError("No module with the name:{0}".format(name))
+
+        return self.modules[name]
 
 
     def loop(self):
@@ -144,19 +163,21 @@ class CommandBot(IrcSocket):
         Examines all messages received, then attempts to match commands against any messages, in order.
         '''
         for m in self.get_messages():
+            was_command = False
             source, action, targets, message = m
             print(m)
             if message and action == "PRIVMSG":
-                for c in self.commands:
-                    if c(source, action, targets, message):
-                        break
+                for module in modules:
+                    for c in module.commands:
+                        if c(source, action, targets, message):
+                            was_command = True
+                            break
 
-                #if we reach this point it matches no known command and
-                #therefore can be logged 
-                self.log_message(source, action, targets, message, m)
+                if not was_command:
+                    #if the message wasn't a command we log it
+                    self.log_message(source, action, targets, message, m)
 
         return
-
 
     def msgs_all(self, msgs, channels):
         """
