@@ -11,7 +11,7 @@ class GoogleModule():
     def __init__(self, bot):
         self.bot = bot
         self.commands = [
-                command(r"!help (?P<searchterms>\S+)", self.return_search_link)
+                command(r"!help (?P<searchterms>[\w\s]+)", self.return_search_link)
                 ]
 
         self.events = []
