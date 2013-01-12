@@ -13,16 +13,19 @@ class LogModule():
                 command(r"^!harvest many (?P<match>.*)", self.harvest_many),
                 command(r"^!harvest (?P<match>.*)", self.harvest)
                 ]
-        
+
+        self.events = []
 
     def harvest_many(self, source, actions, targets, message, m):
         '''
         Search the logs for every item that can .search match the m.group("match")
         value
         '''
+        print('Calling harvest many')
         messages = []
         try:
             results = self.bot.search_logs_greedy(m.group("match"), match=False)
+            print(results)
             if results:
                 for result in results:
                     messages.append (" [message:{0}, sender:{1}] ".format(result.message, result.name))
@@ -54,7 +57,7 @@ class LogModule():
 
 bot = CommandBot('LumberJack', 'irc.segfault.net.nz', 6667)
 bot.join('#bots')
-hb = LogBot(bot)
+hb = LogModule(bot)
 bot.add_module('Logging', hb)
 bot.loop()
 

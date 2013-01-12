@@ -21,6 +21,21 @@ def command(expr, func):
         return True
     return process
 
+def event(event_id, func):
+    '''
+    Helper function that constructs an event suitable for CommandBot.
+
+    Takes an id and a function
+    '''
+    event_id = event_id
+    def process(source, action, args, message):
+        if not event_id == action:
+            return False
+
+        func(source, action, args, message)
+        return True
+    return process
+
 class CommandBot(IrcSocket):
     '''
     A base IRC bot with a simple framework and helpers in place for command processing.
@@ -29,7 +44,6 @@ class CommandBot(IrcSocket):
 
     See the command helper for constructing commands.
     '''
-    commands = []
 
     def __init__(self, nick, network, port, max_log_len = 100):
         super(CommandBot, self).__init__()
@@ -40,6 +54,15 @@ class CommandBot(IrcSocket):
         self.server = network
         self.port = port
         self.logs = deque(maxlen = max_log_len)
+
+        self.commands = []
+        self.events = []
+
+        #add a handler that captures the 001 event and joins channels added
+        #before we registered
+        self.registered = False
+        self.channels = []
+        self.events.append(event('001', self._join))
 
     def add_module(self, name, module):
         '''
@@ -66,7 +89,7 @@ class CommandBot(IrcSocket):
         '''
         if name not in self.modules:
             return False
-        
+
         else:
             return True
 
@@ -100,7 +123,7 @@ class CommandBot(IrcSocket):
         Optional:
             nick: if specified attempts to match the given value to the nick as well
             match: controls wether the regex matcher uses a .search or a .match as per  python re specs
-        
+
         Returns a tuple in the format (senders nick, message receivers, message) if a match is found, otherwise
         it returns None
 
@@ -111,7 +134,7 @@ class CommandBot(IrcSocket):
 
             if match:
                 result = re.match(regex, entry.message)
-            
+
             else:
                 result = re.search(regex, entry.message)
 
@@ -137,7 +160,7 @@ class CommandBot(IrcSocket):
         Optional:
             nick: if specified attempts to match the given value to the nick as well
             match: controls whether the regex matcher uses a .search or a .match as per python re specs
-        
+
         Returns a tuple in the format (senders nick, message receivers, message) if a match is found, otherwise
         it returns None
 
@@ -148,7 +171,7 @@ class CommandBot(IrcSocket):
 
             if match:
                 result = re.match(regex, entry.message)
-            
+
             else:
                 result = re.search(regex, entry.message)
 
@@ -176,7 +199,13 @@ class CommandBot(IrcSocket):
             source, action, targets, message = m
             print(m)
             if message and action == "PRIVMSG":
-                for module in modules:
+                for command in self.commands:
+                    if command(source, action, targets, message):
+                        was_command = True
+                        break
+
+                for module in self.modules:
+                    module = self.modules[module]
                     for c in module.commands:
                         if c(source, action, targets, message):
                             was_command = True
@@ -185,6 +214,16 @@ class CommandBot(IrcSocket):
                 if not was_command:
                     #if the message wasn't a command we log it
                     self.log_message(source, action, targets, message, m)
+
+            else:
+                #we are dealing with some kind of event
+                #check it against the event commands
+                for e in self.events:
+                    e(source, action, targets, message)
+                for module in self.modules:
+                    module = self.modules[module]
+                    for e in module.events:
+                        e(source, action, targets, message)
 
         return
 
@@ -222,7 +261,20 @@ class CommandBot(IrcSocket):
         The channel should contain one or more # symbols as needed.
 
         '''
-        self.send('JOIN ' + channel)
+        if self.registered:
+            self.send('JOIN ' + channel)
+
+        else:
+            self.channels.append(channel)
+
+    def _join(self, source, action, args, message):
+        '''
+        Join all channels in the channels variable
+        '''
+        self.registered = True
+        for channel in self.channels:
+            self.join(channel)
+
 
     def quit(self, message):
         '''

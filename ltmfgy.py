@@ -14,13 +14,15 @@ class GoogleModule():
                 command(r"!help (?P<searchterms>\S+)", self.return_search_link)
                 ]
 
+        self.events = []
+
     def return_search_link(self, source, action, targets, message, m):
         search_terms = m.group("searchterms").replace(" ", "+")
         self.bot.msg_all("http://lmgtfy.com/?q="+m.group("searchterms"), targets)
 
 
 bot = CommandBot("HelpBot", "irc.segfault.net.nz", 6667)
-bot.join("#cave")
-gb = new GoogleBot()
+bot.join("#bots")
+gb = GoogleModule(bot)
 bot.add_module("Helper", gb)
 bot.loop()
