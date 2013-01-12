@@ -1,4 +1,5 @@
 from commandbot import *
+from irc_module import IrcModule
 import sys
 
 class GoogleModule():
@@ -23,7 +24,9 @@ class GoogleModule():
 
 if __name__ == '__main__':
     bot = CommandBot("HelpBot", "irc.segfault.net.nz", 6667)
-    bot.join("#bots")
+    irc = IrcModule(bot)
+    bot.add_module('IRC', irc)
     gb = GoogleModule(bot)
     bot.add_module("Helper", gb)
+    irc.join('#bots')
     bot.loop()

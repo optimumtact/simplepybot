@@ -8,7 +8,7 @@ from collections import deque
 
 def command(expr, func):
     '''
-    Helper function that constructs a command suitable for CommandBot.
+    Helper function that constructs a command handler suitable for CommandBot.
 
     Takes an re source string and a function.
     '''
@@ -23,7 +23,7 @@ def command(expr, func):
 
 def event(event_id, func):
     '''
-    Helper function that constructs an event suitable for CommandBot.
+    Helper function that constructs an event handler suitable for CommandBot.
 
     Takes an id and a function
     '''
@@ -54,10 +54,6 @@ class CommandBot(IrcSocket):
         self.server = network
         self.port = port
         self.logs = deque(maxlen = max_log_len)
-
-        #add the base irc module
-        irc = IrcModule(self)
-        self.add_module('IRC', irc)
 
     def add_module(self, name, module):
         '''
@@ -120,7 +116,8 @@ class CommandBot(IrcSocket):
 
                 if not was_command:
                     #if the message wasn't a command we log it
-                    self.log_message(source, action, args, message, m)
+                    #self.log_message(source, action, args, message, m)
+                    pass
 
             else:
                 #we are dealing with some kind of event

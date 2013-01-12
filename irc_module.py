@@ -4,7 +4,10 @@ class IrcModule():
 
     def __init__(self, bot):
         self.bot = bot
-        self.commands = []
+        self.commands = [
+                command(bot.nick+':? join (?P<channel>/s+)', self.live_join),
+                command(bot.nick+':? leave (?P<channel>/s+)', self.live_leave),
+                ]
         self.events = [
                 event('001', self._join),
                 ]
@@ -59,6 +62,17 @@ class IrcModule():
         for channel in self.channels:
             self.join(channel)
 
+    def live_join(self, source, action, targets, message, m):
+        '''
+        Join a channel live
+        '''
+        self.join(m.group('channel'))
+
+    def live_leave(self, source, action, targets, message, m):
+        '''
+        leave a channel live
+        '''
+        self.leave(m.group('channel'))
 
     def quit(self, message):
         '''
