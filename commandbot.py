@@ -55,6 +55,10 @@ class CommandBot(IrcSocket):
         self.port = port
         self.logs = deque(maxlen = max_log_len)
 
+        #add the base irc module
+        irc = IrcModule(self)
+        self.add_module('IRC', irc)
+
     def add_module(self, name, module):
         '''
         Add the given module to the modules dictionary under the given name

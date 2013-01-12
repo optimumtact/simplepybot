@@ -9,6 +9,8 @@ class LogModule():
 
     def __init__(self, bot):
         self.bot = bot
+        self.irc = bot.get_module('IRC')
+
         self.commands = [
                 command(r"^!harvest many (?P<match>.*)", self.harvest_many),
                 command(r"^!harvest (?P<match>.*)", self.harvest)
@@ -24,34 +26,34 @@ class LogModule():
         print('Calling harvest many')
         messages = []
         try:
-            results = self.bot.search_logs_greedy(m.group("match"), match=False)
+            results = self.search_logs_greedy(m.group("match"), match=False)
             print(results)
             if results:
                 for result in results:
                     messages.append (" [message:{0}, sender:{1}] ".format(result.message, result.name))
-                self.bot.msg_all(''.join(messages), targets)
+                self.irc.msg_all(''.join(messages), targets)
 
             else:
-                self.bot.msg_all("No matches found", targets)
+                self.irc.msg_all("No matches found", targets)
 
         except re.error:
-            self.bot.msg_all("Not a valid regex", targets)
+            self.irc.msg_all("Not a valid regex", targets)
 
     def harvest(self, source, actions, targets, message, m):
         """
         Search the logs for anything matching the m.group("match") value
         """
         try:
-            result = self.bot.search_logs(m.group("match"), match=False)
+            result = self.search_logs(m.group("match"), match=False)
             if result:
                 message = "Harvested:{0}, sender:{1}".format(result.message, result.name)
-                self.bot.msg_all(message, targets)
+                self.irc.msg_all(message, targets)
 
             else:
-                self.bot.msg_all("No match found", targets)
+                self.irc.msg_all("No match found", targets)
 
         except re.error:
-            self.bot.msg_all("Not a valid regex", targets)
+            self.irc.msg_all("Not a valid regex", targets)
 
     def log_message(self, source, action, targets, message, m):
         """
