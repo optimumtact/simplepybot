@@ -20,9 +20,9 @@ class GoogleModule():
         search_terms = m.group("searchterms").replace(" ", "+")
         self.bot.msg_all("http://lmgtfy.com/?q="+m.group("searchterms"), targets)
 
-
-bot = CommandBot("HelpBot", "irc.segfault.net.nz", 6667)
-bot.join("#bots")
-gb = GoogleModule(bot)
-bot.add_module("Helper", gb)
-bot.loop()
+if __name__ == '__main__':
+    bot = CommandBot("HelpBot", "irc.segfault.net.nz", 6667)
+    bot.join("#bots")
+    gb = GoogleModule(bot)
+    bot.add_module("Helper", gb)
+    bot.loop()

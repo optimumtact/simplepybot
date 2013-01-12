@@ -54,10 +54,10 @@ class LogModule():
             self.bot.msg_all("Not a valid regex", targets)
 
 
-
-bot = CommandBot('LumberJack', 'irc.segfault.net.nz', 6667)
-bot.join('#bots')
-hb = LogModule(bot)
-bot.add_module('Logging', hb)
-bot.loop()
+if __name__ = '__main__':
+    bot = CommandBot('LumberJack', 'irc.segfault.net.nz', 6667)
+    bot.join('#bots')
+    hb = LogModule(bot)
+    bot.add_module('Logging', hb)
+    bot.loop()
 
