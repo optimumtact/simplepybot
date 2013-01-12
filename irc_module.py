@@ -8,6 +8,8 @@ class IrcModule():
         self.events = [
                 event('001', self._join),
                 ]
+        self.channels = []
+        self.registered = False
 
     def msgs_all(self, msgs, channels):
         """

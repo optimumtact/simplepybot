@@ -55,15 +55,6 @@ class CommandBot(IrcSocket):
         self.port = port
         self.logs = deque(maxlen = max_log_len)
 
-        self.commands = []
-        self.events = []
-
-        #add a handler that captures the 001 event and joins channels added
-        #before we registered
-        self.registered = False
-        self.channels = []
-        self.events.append(event('001', self._join))
-
     def add_module(self, name, module):
         '''
         Add the given module to the modules dictionary under the given name
