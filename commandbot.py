@@ -53,7 +53,14 @@ class CommandBot(IrcSocket):
         self.nick = nick
         self.server = network
         self.port = port
-        self.logs = deque(maxlen = max_log_len)
+
+        self.registered = False
+        self.channels = []
+
+        self.commands = []
+        self.events = [
+                event('001', self.registered_event),
+                ]
 
     def add_module(self, name, module):
         '''
@@ -106,7 +113,13 @@ class CommandBot(IrcSocket):
             was_command = False
             source, action, args, message = m
             print(m)
+
             if message and action == "PRIVMSG":
+                for command in self.commands:
+                    if command(source, action, args, message):
+                        was_command = True
+                        break 
+
                 for module in self.modules:
                     module = self.modules[module]
                     for c in module.commands:
@@ -122,12 +135,84 @@ class CommandBot(IrcSocket):
             else:
                 #we are dealing with some kind of event
                 #check it against the event commands
+                for event in self.events:
+                    event(source, action, args, message)
+
                 for module in self.modules:
                     module = self.modules[module]
                     for e in module.events:
                         e(source, action, args, message)
 
         return
+
+    def msgs_all(self, msgs, channels):
+        """
+        Accepts a list of messages to send to a list of channels
+        msgs: A list of messages to send
+        channels: A list of targets to send it to
+        """
+        for channel in channels:
+            for message in msgs:
+                self.msg(message, channel)
+
+    def msg_all(self, message, channels):
+        """
+        Accepts a message to send to a list of channels
+        message: the message to send
+        channels: A list of targets to send it to
+        """
+        for channel in channels:
+            self.msg(message, channel)
+
+    def msg(self, message, channel):
+        '''
+        Send a message to a specific target.
+        message: the message to send
+        channel: the target to send it to
+        '''
+        self.send('PRIVMSG ' + channel + ' :' + message)
+
+    def join(self, channel):
+        '''
+        Join a channel.
+        channel: the channel to join
+        The channel should contain one or more # symbols as needed.
+
+        '''
+        if self.registered:
+            self.send('JOIN ' + channel)
+
+        else:
+            self.channels.append(channel)
+
+    def registered_event(self, source, action, args, message):
+        '''
+        this is called when a 001 welcome message gets received
+        any actions that require you to be registered with
+        name and nick first are cached and then called when
+        this event is fired
+        '''
+        self.registered = True
+        for channel in self.channels:
+            self.join(channel)
+
+    def quit(self, message):
+        '''
+        Disconnects from a server with a given QUIT message.
+        message: message to display with quit
+        '''
+        self.send('QUIT :' + message)
+
+    def leave(self, channel, message=None):
+        '''
+        Leaves a channel, optionally sending a message to the channel first.
+        channel: Channel to leave
+        message: optional message to send first
+        XXX: The message should probably be the PART message
+        '''
+        if message:
+            self.msg(message, channel)
+        self.send('PART ' + channel)
 
 
 class BotDB:
