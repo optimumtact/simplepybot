@@ -1,5 +1,5 @@
 from commandbot import *
-from irc_module import IrcModule
+from channel_control import ChannelControlModule
 import sys
 
 class GoogleModule():
@@ -11,7 +11,6 @@ class GoogleModule():
 
     def __init__(self, bot):
         self.bot = bot
-        self.irc = bot.get_module('IRC')
         self.commands = [
                 command(r"!help (?P<searchterms>[\w\s]+)", self.return_search_link)
                 ]
@@ -20,13 +19,13 @@ class GoogleModule():
 
     def return_search_link(self, source, action, targets, message, m):
         search_terms = m.group("searchterms").replace(" ", "+")
-        self.irc.msg_all("http://lmgtfy.com/?q="+m.group("searchterms"), targets)
+        self.bot.msg_all("http://lmgtfy.com/?q="+m.group("searchterms"), targets)
 
 if __name__ == '__main__':
     bot = CommandBot("HelpBot", "irc.segfault.net.nz", 6667)
-    irc = IrcModule(bot)
-    bot.add_module('IRC', irc)
+    mod = ChannelControlModule(bot)
+    bot.add_module('ChannelControl', mod)
     gb = GoogleModule(bot)
     bot.add_module("Helper", gb)
-    irc.join('#bots')
+    bot.join('#bots')
     bot.loop()
