@@ -21,38 +21,35 @@ class LogModule():
 
     def harvest_many(self, source, actions, targets, message, m):
         '''
-        Search the logs for every item that can .search match the m.group("match")
-        value
+        Search the logs for every item that has  the m.group("match")
+        value as a substring
         '''
+        print(message)
         messages = []
-        try:
-            results = self.search_logs_greedy(m.group("match"), match=False)
-            if results:
-                for result in results:
-                    messages.append ("\"message:{0}, sender:{1}\"".format(result.message, result.name))
-                self.bot.msg_all(' '.join(messages), targets)
+        results = self.search_logs_greedy(m.group("match"))
+        if results:
+            for result in results:
+                messages.append ("\"message:{0}, sender:{1}\"".format(result.message, result.name))
+            self.bot.msg_all(' '.join(messages), targets)
 
-            else:
-                self.bot.msg_all("No matches found", targets)
+        else:
+            self.bot.msg_all("No matches found", targets)
 
-        except re.error:
-            self.bot.msg_all("Not a valid regex", targets)
 
     def harvest(self, source, actions, targets, message, m):
         """
-        Search the logs for anything matching the m.group("match") value
+        Search the logs for any message containing the m.group("match") value
+        as a substring
         """
-        try:
-            result = self.search_logs(m.group("match"), match=False)
-            if result:
-                message = "Harvested:{0}, sender:{1}".format(result.message, result.name)
-                self.bot.msg_all(message, targets)
+        print(message)
+        result = self.search_logs(m.group("match"))
+        if result:
+            message = "Harvested:{0}, sender:{1}".format(result.message, result.name)
+            self.bot.msg_all(message, targets)
 
-            else:
-                self.bot.msg_all("No match found", targets)
+        else:
+            self.bot.msg_all("No match found", targets)
 
-        except re.error:
-            self.bot.msg_all("Not a valid regex", targets)
 
     def log_message(self, source, action, args, message):
         """
@@ -68,30 +65,13 @@ class LogModule():
         #store as a new log entry!
         self.logs.append(LogEntry(senders_name, message, args))
 
-    def search_logs(self, regex, name=None, match = True):
+    def search_logs(self, string, name=None):
         """
-        Search the stored logs for a message matching the regex given
-        Parameters:
-            regex:the regex to search with
-        Optional:
-            nick: if specified attempts to match the given value to the nick as well
-            match: controls wether the regex matcher uses a .search or a .match as per  python re specs
-
-        Returns a tuple in the format (senders nick, message receivers, message) if a match is found, otherwise
-        it returns None
-
-        This method does not capture any errors, so as to allow the bot calling to define what happens when
-        the regex compile fails (a re.error is thrown, so catch that)
+        search the logs, returning the first message that contains string as a substring
         """
+        print('search logs non greedy')
         for entry in self.logs:
-
-            if match:
-                result = re.match(regex, entry.message)
-
-            else:
-                result = re.search(regex, entry.message)
-
-            if result:
+            if string in entry.message:
                 if name:
                     if entry.name == name:
                         return entry
@@ -104,31 +84,13 @@ class LogModule():
 
         return None
 
-    def search_logs_greedy(self, regex, name = None, match = True):
+    def search_logs_greedy(self, string, name = None):
         """
-        Search the stored logs for a message matching the regex given, on a match keeps matching
-        and returns a list of all matching logs
-        Parameters:
-            regex: the regex to search the logs with
-        Optional:
-            nick: if specified attempts to match the given value to the nick as well
-            match: controls whether the regex matcher uses a .search or a .match as per python re specs
-
-        Returns a tuple in the format (senders nick, message receivers, message) if a match is found, otherwise
-        it returns None
-
-        This method does not capture any errors, so as to allow the bot calling to define error handling
+        search the logs, returning all messages that contain the string as a substring
         """
         all_matches = []
         for entry in self.logs:
-
-            if match:
-                result = re.match(regex, entry.message)
-
-            else:
-                result = re.search(regex, entry.message)
-
-            if result:
+            if string in entry.message:
                 if name:
                     if entry.name == name:
                         all_matches.append(entry)
