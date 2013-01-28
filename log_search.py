@@ -1,4 +1,4 @@
-from commandbot import command, event
+from commandbot import *
 
 class LogModule():
     '''
@@ -24,15 +24,13 @@ class LogModule():
         Search the logs for every item that can .search match the m.group("match")
         value
         '''
-        print('Calling harvest many')
         messages = []
         try:
             results = self.search_logs_greedy(m.group("match"), match=False)
-            print(results)
             if results:
                 for result in results:
-                    messages.append (" [message:{0}, sender:{1}] ".format(result.message, result.name))
-                self.bot.msg_all(''.join(messages), targets)
+                    messages.append ("\"message:{0}, sender:{1}\"".format(result.message, result.name))
+                self.bot.msg_all(' '.join(messages), targets)
 
             else:
                 self.bot.msg_all("No matches found", targets)
@@ -68,7 +66,7 @@ class LogModule():
         """
         senders_name = source.split('!')[0]
         #store as a new log entry!
-        self.logs.append(LogEntry(senders_name, message, targets))
+        self.logs.append(LogEntry(senders_name, message, args))
 
     def search_logs(self, regex, name=None, match = True):
         """
@@ -159,7 +157,7 @@ class LogEntry:
     def __repr__(self):
         return "name:{0}, message:{1}, channel:{2}, timestamp{3}".format(self.name, self.message, self.channel, self.timestamp)
 
-if __name__ = '__main__':
+if __name__ == '__main__':
     bot = CommandBot('LumberJack', 'irc.segfault.net.nz', 6667)
     bot.join('#bots')
     hb = LogModule(bot)
