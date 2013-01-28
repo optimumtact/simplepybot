@@ -127,14 +127,14 @@ class CommandBot(IrcSocket):
             if message and action == "PRIVMSG":
                 for command in self.commands:
                     if command(source, action, args, message):
-                        action =='COMMAND' #we set the action to command so valid commands can be identified by modules
+                        action ='COMMAND' #we set the action to command so valid commands can be identified by modules
                         break
 
                 for module in self.modules:
                     module = self.modules[module]
                     for c in module.commands:
                         if c(source, action, args, message):
-                            action == 'COMMAND'
+                            action = 'COMMAND'
                             break
 
             #check it against the event commands
