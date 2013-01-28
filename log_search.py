@@ -24,7 +24,6 @@ class LogModule():
         Search the logs for every item that has  the m.group("match")
         value as a substring
         '''
-        print(message)
         messages = []
         results = self.search_logs_greedy(m.group("match"))
         if results:
@@ -41,7 +40,6 @@ class LogModule():
         Search the logs for any message containing the m.group("match") value
         as a substring
         """
-        print(message)
         result = self.search_logs(m.group("match"))
         if result:
             message = "Harvested:{0}, sender:{1}".format(result.message, result.name)
@@ -69,7 +67,6 @@ class LogModule():
         """
         search the logs, returning the first message that contains string as a substring
         """
-        print('search logs non greedy')
         for entry in self.logs:
             if string in entry.message:
                 if name:
