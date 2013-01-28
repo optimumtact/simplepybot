@@ -117,14 +117,14 @@ class CommandBot(IrcSocket):
             if message and action == "PRIVMSG":
                 for command in self.commands:
                     if command(source, action, args, message):
-                        was_command = True
+                        action =='COMMAND' #we set the action to command so it can be ignored by the logger
                         break 
 
                 for module in self.modules:
                     module = self.modules[module]
                     for c in module.commands:
                         if c(source, action, args, message):
-                            was_command = True
+                            action == 'COMMAND'
                             break
 
                 if not was_command:
