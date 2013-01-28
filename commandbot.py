@@ -10,7 +10,7 @@ def command(expr, func):
     '''
     Helper function that constructs a command handler suitable for CommandBot.
 
-    Takes an re source string and a function.
+    Takes a regex source string and a function.
     '''
     guard = re.compile(expr)
     def process(source, action, args, message):
@@ -107,18 +107,28 @@ class CommandBot(IrcSocket):
         '''
         Simple logic processing.
 
-        Examines all messages received, then attempts to match commands against any messages, in order.
+        Examines all messages received, then attempts to match commands against any messages, in 
+        the following order
+
+        if a privmsg
+        commands local to commandbot
+        commands in modules loaded
+
+        all messages(including privmsgs)
+        events local to commandbot
+        events in modules loaded
         '''
         for m in self.get_messages():
             was_command = False
             source, action, args, message = m
             print(m)
 
+            #if a priv message we first pass it through the command handlers
             if message and action == "PRIVMSG":
                 for command in self.commands:
                     if command(source, action, args, message):
-                        action =='COMMAND' #we set the action to command so it can be ignored by the logger
-                        break 
+                        action =='COMMAND' #we set the action to command so valid commands can be identified by modules
+                        break
 
                 for module in self.modules:
                     module = self.modules[module]
@@ -127,21 +137,14 @@ class CommandBot(IrcSocket):
                             action == 'COMMAND'
                             break
 
-                if not was_command:
-                    #if the message wasn't a command we log it
-                    #self.log_message(source, action, args, message, m)
-                    pass
+            #check it against the event commands
+            for event in self.events:
+                event(source, action, args, message)
 
-            else:
-                #we are dealing with some kind of event
-                #check it against the event commands
-                for event in self.events:
-                    event(source, action, args, message)
-
-                for module in self.modules:
-                    module = self.modules[module]
-                    for e in module.events:
-                        e(source, action, args, message)
+            for module in self.modules:
+                module = self.modules[module]
+                for e in module.events:
+                    e(source, action, args, message)
 
         return
 
