@@ -6,8 +6,8 @@ class ChannelControlModule():
         self.bot = bot
         print(bot.nick)
         self.commands = [
-                command(bot.nick+':? join (?P<channel>\w+)', self.join),
-                command(bot.nick+':? leave (?P<channel>\w+)', self.leave),
+                command(bot.nick+':? join (?P<channel>[#|\w]+)', self.join),
+                command(bot.nick+':? leave (?P<channel>[#\w]+)', self.leave),
                 ]
         self.events = []
         self.channels = []
