@@ -1,4 +1,4 @@
-from commandbot import *
+from commandbot import command, event
 
 class LogModule():
     '''
@@ -9,14 +9,15 @@ class LogModule():
 
     def __init__(self, bot):
         self.bot = bot
-        self.irc = bot.get_module('IRC')
-
+        self.logs = []
         self.commands = [
-                command(r"^!harvest many (?P<match>.*)", self.harvest_many),
-                command(r"^!harvest (?P<match>.*)", self.harvest)
+                command(r"^!harvest many (?P<match>\w+)", self.harvest_many),
+                command(r"^!harvest (?P<match>\w+)", self.harvest)
                 ]
 
-        self.events = []
+        self.events = [
+                event('PRIVMSG', self.log_message)
+                ]
 
     def harvest_many(self, source, actions, targets, message, m):
         '''
@@ -31,13 +32,13 @@ class LogModule():
             if results:
                 for result in results:
                     messages.append (" [message:{0}, sender:{1}] ".format(result.message, result.name))
-                self.irc.msg_all(''.join(messages), targets)
+                self.bot.msg_all(''.join(messages), targets)
 
             else:
-                self.irc.msg_all("No matches found", targets)
+                self.bot.msg_all("No matches found", targets)
 
         except re.error:
-            self.irc.msg_all("Not a valid regex", targets)
+            self.bot.msg_all("Not a valid regex", targets)
 
     def harvest(self, source, actions, targets, message, m):
         """
@@ -47,19 +48,23 @@ class LogModule():
             result = self.search_logs(m.group("match"), match=False)
             if result:
                 message = "Harvested:{0}, sender:{1}".format(result.message, result.name)
-                self.irc.msg_all(message, targets)
+                self.bot.msg_all(message, targets)
 
             else:
-                self.irc.msg_all("No match found", targets)
+                self.bot.msg_all("No match found", targets)
 
         except re.error:
-            self.irc.msg_all("Not a valid regex", targets)
+            self.bot.msg_all("Not a valid regex", targets)
 
-    def log_message(self, source, action, targets, message, m):
+    def log_message(self, source, action, args, message):
         """
         Log messages in order with a queue, these can be searched by search_logs(regex, name)
         takes standard input from self.get_messages() and does cleaning on it, specifically
         splitting the nick out of the irc senders representation (nick!username@server)
+
+        is triggered by any event with a PRIVMSG command, note that privmsgs that are valid commands
+        are not logged, as they are given a new event type of COMMAND, if you want you could extend
+        the logger to log this
         """
         senders_name = source.split('!')[0]
         #store as a new log entry!
