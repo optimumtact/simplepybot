@@ -2,8 +2,9 @@ from network import IrcSocket
 import dbm
 import sys
 import re
+
+from datetime import datetime, timedelta
 from time import sleep
-import datetime
 from collections import deque
 
 def command(expr, func):
@@ -91,13 +92,26 @@ class CommandBot(IrcSocket):
         else:
             return True
 
+    def add_timed_event(start_time, end_time, interval, func, args=None, kwargs=None):
+        '''
+        Add an event that will trigger once at start_time and then every time
+        interval amount of time has elapsed it will trigger again until end_time
+        has passed
+
+        Start time and end time are datetime objects
+        and interval is a timedelta object
+        '''
+        #TODO write the TimedEvent class, with should_trigger and is_expired methods
+        #self.timed_events.append(TimedEvent(start_time, end_time, interval, func, args, kwargs))
+        pass
+
+
     def loop(self):
         '''
         Primary loop.
 
         You'll need to transfer control to this function before execution begins.
-
-        You may wish to override this
+        You may wish to override this to include your own time sensitive features
         '''
         while True:
             self.logic()
@@ -111,12 +125,19 @@ class CommandBot(IrcSocket):
         the following order
 
         if a privmsg
-        commands local to commandbot
-        commands in modules loaded
+            commands local to commandbot
+            commands in modules loaded
 
         all messages(including privmsgs)
         events local to commandbot
         events in modules loaded
+
+        #TODO loop through timed_events array and handle timed events
+        I need to write a timedevent class that has two methods, should_trigger()
+        which returns true if the function should be run
+        and is_expired() which returns true if the timedevent has passed it's end date
+
+        maybe also have trigger() which actually triggers and runs the function
         '''
         for m in self.get_messages():
             was_command = False
@@ -132,8 +153,8 @@ class CommandBot(IrcSocket):
 
                 for module in self.modules:
                     module = self.modules[module]
-                    for c in module.commands:
-                        if c(source, action, args, message):
+                    for command in module.commands:
+                        if command(source, action, args, message):
                             action = 'COMMAND'
                             break
 
@@ -143,8 +164,8 @@ class CommandBot(IrcSocket):
 
             for module in self.modules:
                 module = self.modules[module]
-                for e in module.events:
-                    e(source, action, args, message)
+                for event in module.events:
+                    event(source, action, args, message)
 
         return
 
@@ -211,7 +232,6 @@ class CommandBot(IrcSocket):
         Leaves a channel, optionally sending a message to the channel first.
         channel: Channel to leave
         message: optional message to send first
-        XXX: The message should probably be the PART message
         '''
         if message:
             self.msg(message, channel)
