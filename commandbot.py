@@ -6,12 +6,18 @@ import re
 from datetime import datetime, timedelta
 from time import sleep
 from collections import deque
+import logging
+
 
 def command(expr, func):
     '''
     Helper function that constructs a command handler suitable for CommandBot.
 
     Takes a regex source string and a function.
+
+    These are intended to be evaluated against user messages and when a match is found
+    it calls the associated function, passing through the match object to allow you to
+    extract information from the command
     '''
     guard = re.compile(expr)
     def process(source, action, args, message):
@@ -26,7 +32,10 @@ def event(event_id, func):
     '''
     Helper function that constructs an event handler suitable for CommandBot.
 
-    Takes an id and a function
+    Takes a string event_id and a function
+
+    These are intended to capture events from IRC servers, such as the 001 event 
+    you receive for correctly registering, or errors such as nick in use
     '''
     event_id = event_id
     def process(source, action, args, message):
@@ -39,16 +48,13 @@ def event(event_id, func):
 
 class CommandBot(IrcSocket):
     '''
-    A base IRC bot with a simple framework and helpers in place for command processing.
-
-    Override the commands variable in instances or subclasses.
-
-    See the command helper for constructing commands.
+    A simple IRC bot with command processing, event processing and timed event functionalities
+    A framework for adding more modules to do more complex stuff
     '''
 
     def __init__(self, nick, network, port, max_log_len = 100):
         super(CommandBot, self).__init__()
-        assert network and port
+        assert network and port and nick
         self.modules = dict()
         self.connect((network, port), nick, "bot@"+network, network, nick)
         self.nick = nick
@@ -92,7 +98,7 @@ class CommandBot(IrcSocket):
         else:
             return True
 
-    def add_timed_event(start_time, end_time, interval, func, args=None, kwargs=None):
+    def add_timed_event(end_time, interval, func, func_args=None, func_kwargs=None):
         '''
         Add an event that will trigger once at start_time and then every time
         interval amount of time has elapsed it will trigger again until end_time
@@ -100,10 +106,11 @@ class CommandBot(IrcSocket):
 
         Start time and end time are datetime objects
         and interval is a timedelta object
+
+        Note: you will probably have to pass the self object explicitly, but I haven't double
+        checked this yet
         '''
-        #TODO write the TimedEvent class, with should_trigger and is_expired methods
-        #self.timed_events.append(TimedEvent(start_time, end_time, interval, func, args, kwargs))
-        pass
+        self.timed_events.append(TimedEvent(end_time, interval, func, func_args, func_kwargs))
 
 
     def loop(self):
@@ -111,7 +118,6 @@ class CommandBot(IrcSocket):
         Primary loop.
 
         You'll need to transfer control to this function before execution begins.
-        You may wish to override this to include your own time sensitive features
         '''
         while True:
             self.logic()
@@ -132,12 +138,7 @@ class CommandBot(IrcSocket):
         events local to commandbot
         events in modules loaded
 
-        #TODO loop through timed_events array and handle timed events
-        I need to write a timedevent class that has two methods, should_trigger()
-        which returns true if the function should be run
-        and is_expired() which returns true if the timedevent has passed it's end date
-
-        maybe also have trigger() which actually triggers and runs the function
+        It also evaluates all timed events and triggers them appropriately
         '''
         for m in self.get_messages():
             was_command = False
@@ -166,6 +167,16 @@ class CommandBot(IrcSocket):
                 module = self.modules[module]
                 for event in module.events:
                     event(source, action, args, message)
+
+        #clone timed events list and go through the clone
+        for event in self.timed_events[:]:
+            if event.should_trigger():
+                #TODO trigger event
+                pass
+
+            if event.is_expired():
+                #remove from the original list
+                self.timed_events.remove(event)
 
         return
 
@@ -260,3 +271,52 @@ class BotDB:
         On exit we simply close internal db instance
         """
         self._internal.close()
+
+
+class TimedEvent():
+    '''
+    Represents a timed event, 
+    the should_trigger method will return true if the 
+    function should be triggered at the current time
+
+    the is_expired method will return true if the timedevent
+    has expired (gone past it's end_date)
+    '''
+
+    def __init__(self, end_date, interval, func, func_args, func_kwargs):
+        '''
+        set up a new timed event object 
+        '''
+        self.sd = datetime.now()
+        self.ed = end_date
+        self.interval = interval
+        self.func = func
+        self.func_args = func_args
+        self.func_kwargs = func_kwargs
+
+        self.next_timeout = self.sd + self.interval
+
+    def should_trigger(self):
+        '''
+        Returns true if the timed event interval has elapsed and we need
+        to trigger the function. It also updates when the next timeout
+        should occur
+        '''
+        current_time = datetime.now()
+        if current_time > self.next_timeout:
+            self.next_timeout = current_time + self.interval
+            return True
+
+        else:
+            return False
+
+    def is_expired(self):
+        '''
+        Returns true if the current time is greater than the end_time for
+        this event
+        '''
+        if datetime.now() > self.ed:
+            return True
+
+        else:
+            return False
