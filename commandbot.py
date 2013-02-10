@@ -64,10 +64,14 @@ class CommandBot(IrcSocket):
         self.registered = False
         self.channels = []
 
-        self.commands = []
+        self.commands = [
+                command(self.nick+r':? list modules', self.list_modules),
+                ]
         self.events = [
                 event('001', self.registered_event),
                 ]
+
+        self.timed_events = []
 
     def add_module(self, name, module):
         '''
@@ -98,7 +102,7 @@ class CommandBot(IrcSocket):
         else:
             return True
 
-    def add_timed_event(end_time, interval, func, func_args=None, func_kwargs=None):
+    def add_timed_event(self, start_time, end_time, interval, func, func_args=(), func_kwargs={}):
         '''
         Add an event that will trigger once at start_time and then every time
         interval amount of time has elapsed it will trigger again until end_time
@@ -110,7 +114,7 @@ class CommandBot(IrcSocket):
         Note: you will probably have to pass the self object explicitly, but I haven't double
         checked this yet
         '''
-        self.timed_events.append(TimedEvent(end_time, interval, func, func_args, func_kwargs))
+        self.timed_events.append(TimedEvent(start_time, end_time, interval, func, func_args, func_kwargs))
 
 
     def loop(self):
@@ -172,13 +176,19 @@ class CommandBot(IrcSocket):
         for event in self.timed_events[:]:
             if event.should_trigger():
                 #TODO trigger event
-                pass
+                event.func(*event.func_args, **event.func_kwargs)
 
             if event.is_expired():
                 #remove from the original list
                 self.timed_events.remove(event)
 
         return
+
+    def list_modules(self, source, action, targets, message, m):
+        '''
+        Send a list of all loaded modules
+        '''
+        self.msg_all(', '.join(self.modules.keys()), targets)
 
     def msgs_all(self, msgs, channels):
         """
@@ -283,11 +293,11 @@ class TimedEvent():
     has expired (gone past it's end_date)
     '''
 
-    def __init__(self, end_date, interval, func, func_args, func_kwargs):
+    def __init__(self, start_date, end_date, interval, func, func_args, func_kwargs):
         '''
         set up a new timed event object 
         '''
-        self.sd = datetime.now()
+        self.sd = start_date
         self.ed = end_date
         self.interval = interval
         self.func = func
