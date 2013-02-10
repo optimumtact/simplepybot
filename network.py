@@ -25,6 +25,7 @@ class IrcSocket(object):
         '''
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.connect(address)
+        self.socket.settimeout(0.1)
         self.send('NICK %s' % nick)
         self.send('USER %s %s %s :%s' % (nick, ident, server, realname))
 
@@ -49,11 +50,13 @@ class IrcSocket(object):
         Receives data from the server.
         '''
         buffer_size = self.buffer_size
-        d = self.socket.recv(buffer_size)
-        data = d.decode('utf-8', 'replace')
-        return data
+        try:
+            d = self.socket.recv(buffer_size)
 
-    def process_data(self, data):
+        except socket.timeout as e:
+            return []
+        data = d.decode('utf-8', 'replace')
+
         '''
         Read a stream of data, splitting it into messages seperated by \r\n.
 
@@ -111,7 +114,7 @@ class IrcSocket(object):
         '''
         Get a number of messages from the socket and return them in list form
         '''
-        result = self.process_data(self.recv())
+        result = self.recv()
         clean = []
         for line in result:
             cleaned_message = self.parse_message(line)
