@@ -9,16 +9,18 @@ class AliasBot():
     the framework
     Contains a simple easter egg - HONK.
     '''
-    def __init__(self, bot):
+    def __init__(self, bot, module_name ='Alias'):
         self.commands = [
-                command(r"^%s: quit" % bot.nick, self.end),
-                command(r"^%s:" % self.nick, self.honk),
+                #command(r"^%s:" % self.nick, self.honk),
                 command(r"^!learn (?P<abbr>\S+) as (?P<long>\S.*)$", self.learn),
                 command(r"^!forget (?P<abbr>\S+)", self.forget),
                 command(r"^!list_abbr$", self.list_abbrievations),
                 command(r"^!(?P<abbr>\S+)$", self.retrieve)
                 ]
+        self.events = []
+        self.module_name = module_name
         self.bot = bot
+        bot.add_module(module_name, self)
         self.honk = "HONK"
 
     def alternate_honk(self):
@@ -39,44 +41,49 @@ class AliasBot():
         Learn a new abbreviation.
         '''
         self.bot.msg_all('Remembering %s as %s' % (m.group('abbr'), m.group('long')), targets)
-        self.quotes[m.group('abbr')] = m.group('long')
+        index = (self.module_name, m.group('abbr')
+        self.bot.storage[index] = m.group('long')
 
     def forget(self, source, action, targets, message, m):
         '''
         Forget about an abbreviation.
         '''
-        command = m.group('abbr')
-        if command in self.quotes:
-            del(self.quotes[command])
-            self.bot.msg_all("Hrm. I used to remember %s. Now I don't." % command, targets)
+        abbr = m.group('abbr')
+        command = str((self.module_name, abbr))
+        if command in self.bot.storage:
+            del(self.bot.storage[command])
+            self.bot.msg_all("Hrm. I used to remember %s. Now I don't." % abbr, targets)
         else:
-            self.bot.msg_all("Sorry, I don't know about %s." % command, targets)
+            self.bot.msg_all("Sorry, I don't know about %s." % abbr, targets)
 
     def retrieve(self, source, action, targets, message, m):
         '''
         Retrieves a command.
         '''
-        command = m.group('abbr')
-        if command in self.quotes:
-            self.bot.msg_all("%s: %s" % (command, self.quotes[command].decode()), targets)
+        abbr = m.group('abbr')
+        command = str((self.module_name, abbr))
+        if command in self.bot.storage:
+            self.bot.msg_all("%s: %s" % (abbr, self.bot.storage[command].decode()), targets)
         else:
-            self.bot.msg_all("Sorry, I don't know about %s." % command, targets)
-
-    def end(self, source, action, targets, message, m):
-        """
-        Quits the server
-        """
-        self.bot.quit("I can code something!")
-        sys.exit(0)
+            self.bot.msg_all("Sorry, I don't know about %s." % abbr, targets)
 
     def list_abbrievations(self, source, action, targets, message, m):
         """
         List all known abbrievation commands
         """
-        keys = ", ".join(self.quotes.keys())
-        self.msg_all(keys, targets)
+        #TODO ehh?
+        keys = ", ".join(self.bot.storage.keys())
+        self.bot.msg_all(keys, targets)
+
+    def close(self):
+        #we don't do anything special
+        pass
 
 if __name__ == '__main__':
-    qb = AliasBot("irc.segfault.net.nz", 6667)
-    qb.join("#bots")
-    qb.loop()
+    bot = CommandBot('Gamzee', 'irc.segfault.net.nz', 6667)
+    mod = AliasBot(bot)
+    bot.join('#bots')
+    bot.loop()
+    #qb.join("#bots")
+    #qb.loop()
+    #print('Not correctly done main yet')
