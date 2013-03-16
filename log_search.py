@@ -1,4 +1,5 @@
 from commandbot import *
+import datetime
 
 class LogModule():
     '''
@@ -7,17 +8,19 @@ class LogModule():
     the frameworks logging features
     '''
 
-    def __init__(self, bot):
-        self.bot = bot
-        self.logs = []
+    def __init__(self, bot, module_name = "Logging"):
         self.commands = [
                 command(r"^!harvest many (?P<match>\w+)", self.harvest_many),
                 command(r"^!harvest (?P<match>\w+)", self.harvest)
                 ]
-
         self.events = [
                 event('PRIVMSG', self.log_message)
                 ]
+
+        self.module_name = module_name
+        self.bot = bot
+        self.bot.add_module(module_name, self)
+        self.logs = []
 
     def harvest_many(self, source, actions, targets, message, m):
         '''
@@ -118,8 +121,7 @@ class LogEntry:
 
 if __name__ == '__main__':
     bot = CommandBot('LumberJack', 'irc.segfault.net.nz', 6667)
-    bot.join('#bots')
     hb = LogModule(bot)
-    bot.add_module('Logging', hb)
+    bot.join('#bots')
     bot.loop()
 
