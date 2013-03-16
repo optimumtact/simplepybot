@@ -1,5 +1,5 @@
 from network import IrcSocket
-import dbm
+import shelve
 import sys
 import re
 
@@ -66,12 +66,14 @@ class CommandBot(IrcSocket):
 
         self.commands = [
                 command(self.nick+r':? list modules', self.list_modules),
+                command(self.nick+r':? quit', self.end)
                 ]
         self.events = [
                 event('001', self.registered_event),
                 ]
 
         self.timed_events = []
+
 
     def add_module(self, name, module):
         '''
@@ -110,9 +112,6 @@ class CommandBot(IrcSocket):
 
         Start time and end time are datetime objects
         and interval is a timedelta object
-
-        Note: you will probably have to pass the self object explicitly, but I haven't double
-        checked this yet
         '''
         self.timed_events.append(TimedEvent(start_time, end_time, interval, func, func_args, func_kwargs))
 
@@ -122,10 +121,13 @@ class CommandBot(IrcSocket):
         Primary loop.
 
         You'll need to transfer control to this function before execution begins.
+
+        Sets up the dbm instance
         '''
-        while True:
-            self.logic()
-            sleep(.1)
+        with BotDB('BOTDB') as self.storage:
+            while True:
+                self.logic()
+                sleep(.1)
 
     def logic(self):
         '''
@@ -151,6 +153,7 @@ class CommandBot(IrcSocket):
 
             #if a priv message we first pass it through the command handlers
             if message and action == "PRIVMSG":
+                #TODO try catch block for errors
                 for command in self.commands:
                     if command(source, action, args, message):
                         action ='COMMAND' #we set the action to command so valid commands can be identified by modules
@@ -164,6 +167,7 @@ class CommandBot(IrcSocket):
                             break
 
             #check it against the event commands
+            #TODO try catch blocks for errors
             for event in self.events:
                 event(source, action, args, message)
 
@@ -175,7 +179,7 @@ class CommandBot(IrcSocket):
         #clone timed events list and go through the clone
         for event in self.timed_events[:]:
             if event.should_trigger():
-                #TODO trigger event
+                #TODO try catch block for errors
                 event.func(*event.func_args, **event.func_kwargs)
 
             if event.is_expired():
@@ -189,6 +193,13 @@ class CommandBot(IrcSocket):
         Send a list of all loaded modules
         '''
         self.msg_all(', '.join(self.modules.keys()), targets)
+
+    def end(self, source, action, targets, message, m):
+        for module in self.modules:
+            module = self.modules[module]
+            module.close()
+
+        self.quit('Goodbye for now')
 
     def msgs_all(self, msgs, channels):
         """
@@ -261,7 +272,7 @@ class CommandBot(IrcSocket):
 
 class BotDB:
     """
-    Trivial wrapper class over dbm to enable use in with statements.
+    Trivial wrapper class over shelve to enable use in with statements.
     """
     def __init__(self, name):
         """
@@ -273,7 +284,7 @@ class BotDB:
         """
         Set up the internal db with the right settings
         """
-        self._internal = dbm.open(self.name, 'c')
+        self._internal = shelve.open(self.name, 'c')
         return self._internal
 
     def __exit__(self, type, value, traceback):
@@ -281,7 +292,6 @@ class BotDB:
         On exit we simply close internal db instance
         """
         self._internal.close()
-
 
 class TimedEvent():
     '''
