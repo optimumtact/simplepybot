@@ -54,6 +54,7 @@ class IrcSocket(object):
             d = self.socket.recv(buffer_size)
 
         except socket.timeout as e:
+            #nothing recv, no new messages
             return []
         data = d.decode('utf-8', 'replace')
 
