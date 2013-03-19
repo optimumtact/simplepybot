@@ -1,13 +1,13 @@
-from commandbot import event, command
+from commandbot import event, command, CommandBot
 
-class ChannelControlModule():
+class ControlModule():
 
     def __init__(self, bot):
         self.bot = bot
-        print(bot.nick)
         self.commands = [
-                command(bot.nick+':? join (?P<channel>[#|\w]+)', self.join),
-                command(bot.nick+':? leave (?P<channel>[#\w]+)', self.leave),
+                command(bot.nick+':? join channel (?P<channel>[#|\w]+)', self.join),
+                command(bot.nick+':? leave channel (?P<channel>[#|\w]+)', self.leave),
+                command(bot.nick+':? msg user (?P<user>\w+) (?P<message>[ |\w]+', self.msg_user),
                 ]
         self.events = []
         self.channels = []
@@ -37,3 +37,15 @@ class ChannelControlModule():
         if channel in self.channels:
             self.bot.leave(channel)
             self.channels.remove(channel)
+
+    def msg_user(self, source, action, targets, message, m):
+        '''
+        Send the user a message from the bot
+        '''
+        self.bot.msg(m.group('message'), m.group('user'))
+
+if __name__ == '__main__':
+    bot = CommandBot('Annoy', 'irc.segfault.net.nz', 6667)
+    bot.join('#bots')
+    mod = ControlModule('Command', bot)
+    bot.loop()
