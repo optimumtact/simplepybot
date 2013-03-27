@@ -200,6 +200,7 @@ class CommandBot(IrcSocket):
             module.close()
 
         self.quit('Goodbye for now')
+        sys.exit()
 
     def msgs_all(self, msgs, channels):
         """
