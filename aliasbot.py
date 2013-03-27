@@ -41,7 +41,7 @@ class AliasBot():
         Learn a new abbreviation.
         '''
         self.bot.msg_all('Remembering %s as %s' % (m.group('abbr'), m.group('long')), targets)
-        index = (self.module_name, m.group('abbr')
+        index = str((self.module_name, m.group('abbr')))
         self.bot.storage[index] = m.group('long')
 
     def forget(self, source, action, targets, message, m):
@@ -63,7 +63,7 @@ class AliasBot():
         abbr = m.group('abbr')
         command = str((self.module_name, abbr))
         if command in self.bot.storage:
-            self.bot.msg_all("%s: %s" % (abbr, self.bot.storage[command].decode()), targets)
+            self.bot.msg_all("%s: %s" % (abbr, self.bot.storage[command]), targets)
         else:
             self.bot.msg_all("Sorry, I don't know about %s." % abbr, targets)
 
@@ -71,8 +71,8 @@ class AliasBot():
         """
         List all known abbrievation commands
         """
-        #TODO ehh?
-        keys = ", ".join(self.bot.storage.keys())
+        #look at this functional programming!
+        keys = ", ".join(filter(lambda x:self.module_name in x, self.bot.storage.keys()))
         self.bot.msg_all(keys, targets)
 
     def close(self):
