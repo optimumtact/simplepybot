@@ -1,5 +1,4 @@
 from commandbot import *
-from channel_control import ChannelControlModule
 import sys
 
 class GoogleModule():
@@ -23,9 +22,7 @@ class GoogleModule():
 
 if __name__ == '__main__':
     bot = CommandBot("HelpBot", "irc.segfault.net.nz", 6667)
-    mod = ChannelControlModule(bot)
-    bot.add_module('ChannelControl', mod)
     gb = GoogleModule(bot)
     bot.add_module("Helper", gb)
-    bot.join('#bots')
+    bot.join('#cave')
     bot.loop()
