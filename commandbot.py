@@ -9,42 +9,6 @@ from collections import deque
 import logging
 
 
-def command(expr, func):
-    '''
-    Helper function that constructs a command handler suitable for CommandBot.
-
-    Takes a regex source string and a function.
-
-    These are intended to be evaluated against user messages and when a match is found
-    it calls the associated function, passing through the match object to allow you to
-    extract information from the command
-    '''
-    guard = re.compile(expr)
-    def process(source, action, args, message):
-        m = guard.match(message)
-        if not m:
-            return False
-        func(source, action, args, message, m)
-        return True
-    return process
-
-def event(event_id, func):
-    '''
-    Helper function that constructs an event handler suitable for CommandBot.
-
-    Takes a string event_id and a function
-
-    These are intended to capture events from IRC servers, such as the 001 event 
-    you receive for correctly registering, or errors such as nick in use
-    '''
-    event_id = event_id
-    def process(source, action, args, message):
-        if not event_id == action:
-            return False
-
-        func(source, action, args, message)
-        return True
-    return process
 
 class CommandBot(IrcSocket):
     '''
@@ -65,15 +29,72 @@ class CommandBot(IrcSocket):
         self.channels = []
 
         self.commands = [
-                command(self.nick+r':? list modules', self.list_modules),
-                command(self.nick+r':? quit', self.end)
+                self.command(self.nick+r':? list modules', self.list_modules),
+                self.command(self.nick+r':? quit', self.end)
                 ]
+        #TODO I need to catch 441 or 436 and handle changing bot name by adding
+        #a number or an underscore
+
         self.events = [
-                event('001', self.registered_event),
+                self.event('441', self.change_nick),
+                self.event('436', self.change_nick),
+                self.event('001', self.registered_event),
                 ]
 
         self.timed_events = []
 
+
+    def command(self, expr, func, direct=False, private=False):
+        '''
+        Helper function that constructs a command handler suitable for CommandBot.
+
+        Takes a regex source string and a function.
+        there are two flag values, direct and private. direct sets it up so the
+        bot will only respond to the command if it has had it's nickname 
+        prefixed to the command i.e botname: quit or botname quit, private
+        determines if the command will still be sent to the common channel if
+        the bot has been muted (results sent via privmsg)
+        #TODO - implemented the mute framework :p
+
+        These are intended to be evaluated against user messages and when a match is found
+        it calls the associated function, passing through the match object to allow you to
+        extract information from the command
+        '''
+        guard = re.compile(expr)
+        bot = self
+        def process(source, action, args, message):
+            #make sure this message was directly addressed
+            if direct:
+                if not message.startswith(bot.nick):
+                    return False
+
+            #check it matches our command regex
+            m = guard.match(message)
+            if not m:
+                return False
+
+            #apply the function - TODO catch errors here and log
+            func(source, action, args, message, m)
+            return True
+        return process
+
+    def event(self, event_id, func):
+        '''
+        Helper function that constructs an event handler suitable for CommandBot.
+
+        Takes a string event_id and a function
+
+        These are intended to capture events from IRC servers, such as the 001 event 
+        you receive for correctly registering, or errors such as nick in use
+        '''
+        event_id = event_id
+        def process(source, action, args, message):
+            if not event_id == action:
+                return False
+
+            func(source, action, args, message)
+            return True
+        return process
 
     def add_module(self, name, module):
         '''
