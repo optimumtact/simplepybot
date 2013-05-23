@@ -11,11 +11,11 @@ class AliasBot():
     '''
     def __init__(self, bot, module_name ='Alias'):
         self.commands = [
-                #command(r"^%s:" % self.nick, self.honk),
-                command(r"^!learn (?P<abbr>\S+) as (?P<long>\S.*)$", self.learn),
-                command(r"^!forget (?P<abbr>\S+)", self.forget),
-                command(r"^!list_abbr$", self.list_abbrievations),
-                command(r"^!(?P<abbr>\S+)$", self.retrieve)
+                bot.command(r"^\w*", self.honk, direct=True),
+                bot.command(r"^!learn (?P<abbr>\S+) as (?P<long>\S.*)$", self.learn),
+                bot.command(r"^!forget (?P<abbr>\S+)", self.forget),
+                bot.command(r"^!list_abbr$", self.list_abbrievations),
+                bot.command(r"^!(?P<abbr>\S+)$", self.retrieve)
                 ]
         self.events = []
         self.module_name = module_name
@@ -84,6 +84,3 @@ if __name__ == '__main__':
     mod = AliasBot(bot)
     bot.join('#bots')
     bot.loop()
-    #qb.join("#bots")
-    #qb.loop()
-    #print('Not correctly done main yet')
