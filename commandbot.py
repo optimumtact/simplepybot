@@ -24,20 +24,25 @@ class CommandBot(IrcSocket):
         self.nick = nick
         self.server = network
         self.port = port
-
+        
+        #variables for determining when the bot is registered
         self.registered = False
         self.channels = []
 
+        #variables for bot functionality
+        self.mute = False
+
         self.commands = [
-                self.command(self.nick+r':? list modules', self.list_modules),
-                self.command(self.nick+r':? quit', self.end)
+                self.command('list modules', self.list_modules, direct=True),
+                self.command('quit', self.end, direct=True),
+                self.command('mute', self.mute, direct=True),
                 ]
         #TODO I need to catch 441 or 436 and handle changing bot name by adding
         #a number or an underscore
 
         self.events = [
-                self.event('441', self.change_nick),
-                self.event('436', self.change_nick),
+#               self.event('441', self.change_nick),
+#               self.event('436', self.change_nick),
                 self.event('001', self.registered_event),
                 ]
 
@@ -68,6 +73,18 @@ class CommandBot(IrcSocket):
                 if not message.startswith(bot.nick):
                     return False
 
+                #strip nick from bot
+                message = message[len(bot.nick):]
+                #strip away any syntax left over from addresing
+                message = message.lstrip(': ')
+            
+            #If muted, or message private, send it to user not channel
+            if self.mute or private:
+                pass #TODO replace args with name stripped from source
+            #TODO really I should only be passing in what they need [nick, args,
+            #message] they can determine action via what they linked it too
+            #maybe also include nickhost
+
             #check it matches our command regex
             m = guard.match(message)
             if not m:
@@ -76,14 +93,12 @@ class CommandBot(IrcSocket):
             #apply the function - TODO catch errors here and log
             func(source, action, args, message, m)
             return True
+
         return process
 
     def event(self, event_id, func):
         '''
         Helper function that constructs an event handler suitable for CommandBot.
-
-        Takes a string event_id and a function
-
         These are intended to capture events from IRC servers, such as the 001 event 
         you receive for correctly registering, or errors such as nick in use
         '''
@@ -222,6 +237,20 @@ class CommandBot(IrcSocket):
 
         self.quit('Goodbye for now')
         sys.exit()
+
+    def mute(self, source, action, targets, message, m):
+        '''
+        Mute/unmute the bot
+        '''
+        self.mute = !self.mute
+
+        if mute:
+            message = 'Bot is now muted'
+        
+        else:
+            message = 'Bot is now unmuted'
+
+        self.msg_all(message, targets)
 
     def msgs_all(self, msgs, channels):
         """
