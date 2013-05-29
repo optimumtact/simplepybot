@@ -10,11 +10,11 @@ class LogModule():
 
     def __init__(self, bot, module_name = "Logging"):
         self.commands = [
-                command(r"^!harvest many (?P<match>\w+)", self.harvest_many),
-                command(r"^!harvest (?P<match>\w+)", self.harvest)
+                bot.command(r"^!find many (?P<match>\w+)", self.harvest_many),
+                bot.command(r"^!find first (?P<match>\w+)", self.harvest)
                 ]
         self.events = [
-                event('PRIVMSG', self.log_message)
+                bot.event('PRIVMSG', self.log_message)
                 ]
 
         self.module_name = module_name
@@ -27,12 +27,13 @@ class LogModule():
         Search the logs for every item that has  the m.group("match")
         value as a substring
         '''
+        print('harvest many')
         messages = []
         results = self.search_logs_greedy(m.group("match"))
         if results:
             for result in results:
-                messages.append ("\"message:{0}, sender:{1}\"".format(result.message, result.name))
-            self.bot.msg_all(' '.join(messages), targets)
+                messages.append ("message:{0}, sender:{1}".format(result.message, result.name))
+            self.bot.msg_all('Found:    '+'|'.join(messages), targets)
 
         else:
             self.bot.msg_all("No matches found", targets)
@@ -43,9 +44,10 @@ class LogModule():
         Search the logs for any message containing the m.group("match") value
         as a substring
         """
+        print('harvest one')
         result = self.search_logs(m.group("match"))
         if result:
-            message = "Harvested:{0}, sender:{1}".format(result.message, result.name)
+            message = "Found:{0}, sender:{1}".format(result.message, result.name)
             self.bot.msg_all(message, targets)
 
         else:
@@ -103,6 +105,10 @@ class LogModule():
 
         return all_matches
 
+    def close(self):
+        #we don't do anything special
+        pass
+        
 class LogEntry:
     """
     simple storage class representing a logged channel message
@@ -121,7 +127,7 @@ class LogEntry:
 
 if __name__ == '__main__':
     bot = CommandBot('LumberJack', 'irc.segfault.net.nz', 6667)
-    hb = LogModule(bot)
+    LogModule(bot)
     bot.join('#bots')
     bot.loop()
 
