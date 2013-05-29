@@ -35,7 +35,7 @@ class CommandBot(IrcSocket):
         self.commands = [
                 self.command('list modules', self.list_modules, direct=True),
                 self.command('quit', self.end, direct=True),
-                self.command('mute', self.mute, direct=True),
+                self.command('mute', self.mute, direct=True, can_mute=False),
                 ]
         #TODO I need to catch 441 or 436 and handle changing bot name by adding
         #a number or an underscore
@@ -49,7 +49,7 @@ class CommandBot(IrcSocket):
         self.timed_events = []
 
 
-    def command(self, expr, func, direct=False, private=False):
+    def command(self, expr, func, direct=False, can_mute=True, private=False):
         '''
         Helper function that constructs a command handler suitable for CommandBot.
 
@@ -75,12 +75,14 @@ class CommandBot(IrcSocket):
 
                 #strip nick from bot
                 message = message[len(bot.nick):]
-                #strip away any syntax left over from addresing
+                #strip away any syntax left over from addressing
                 message = message.lstrip(': ')
             
             #If muted, or message private, send it to user not channel
-            if self.mute or private:
-                pass #TODO replace args with name stripped from source
+            if (self.is_mute or private) and can_mute:
+                #replace args with name stripped from source
+                args = [source.split('!')[0]]
+                
             #TODO really I should only be passing in what they need [nick, args,
             #message] they can determine action via what they linked it too
             #maybe also include nickhost
@@ -139,7 +141,17 @@ class CommandBot(IrcSocket):
 
         else:
             return True
-
+    
+    def run_event_in(self, seconds, func, func_args=(), func_kwargs={}):
+        '''
+        Helper function that runs an event x seconds in the future, where seconds
+        is how many seconds from now to run it
+        '''
+        start_time = datetime.now()
+        interval = timedelta(seconds=seconds)
+        end_time = start_time + interval
+        self.add_timed_event(start_time, end_time, interval, func, func_args, func_kwargs)
+        
     def add_timed_event(self, start_time, end_time, interval, func, func_args=(), func_kwargs={}):
         '''
         Add an event that will trigger once at start_time and then every time
@@ -248,7 +260,7 @@ class CommandBot(IrcSocket):
             message = 'Bot is now muted'
         
         else:
-            message = 'Bot is now unmuted'
+            message= 'Bot is now unmuted'
 
         self.msg_all(message, targets)
 
