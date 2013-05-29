@@ -30,7 +30,7 @@ class CommandBot(IrcSocket):
         self.channels = []
 
         #variables for bot functionality
-        self.mute = False
+        self.is_mute = False
 
         self.commands = [
                 self.command('list modules', self.list_modules, direct=True),
@@ -242,9 +242,9 @@ class CommandBot(IrcSocket):
         '''
         Mute/unmute the bot
         '''
-        self.mute = !self.mute
+        self.is_mute = not self.is_mute
 
-        if mute:
+        if self.is_mute:
             message = 'Bot is now muted'
         
         else:
