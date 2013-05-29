@@ -8,17 +8,22 @@ class GoogleModule():
     to sarcastically answer peoples questions
     """
 
-    def __init__(self, bot):
+    def __init__(self, bot, module_name='Helper'):
         self.bot = bot
+        bot.add_module(module_name, self)
         self.commands = [
-                command(r"!help (?P<searchterms>[\w\s]+)", self.return_search_link)
+                bot.command(r"!help (?P<searchterms>[\w\s]+)", self.return_search_link)
                 ]
 
         self.events = []
 
     def return_search_link(self, source, action, targets, message, m):
         search_terms = m.group("searchterms").replace(" ", "+")
-        self.bot.msg_all("http://lmgtfy.com/?q="+m.group("searchterms"), targets)
+        self.bot.msg_all("http://lmgtfy.com/?q="+search_terms, targets)
+        
+    def close(self):
+        #we do nothing
+        pass
 
 if __name__ == '__main__':
     bot = CommandBot("HelpBot", "irc.segfault.net.nz", 6667)
