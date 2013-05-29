@@ -1,5 +1,4 @@
 from commandbot import CommandBot
-from commandbot import command, event
 from datetime import datetime, timedelta
 
 class ReminderModule():
@@ -15,10 +14,11 @@ class ReminderModule():
     requested
     '''
 
-    def __init__(self, bot):
+    def __init__(self, bot, module_name='Reminder'):
         self.bot = bot
+        self.bot.add_module(module_name, self)
         self.commands = [
-                command(r'!remind me in (?P<num>\d+) (?P<unit>hours?|minutes?|seconds?) (?P<string>(\w+| )+)', self.remind_user)
+                bot.command(r'!remind me in (?P<num>\d+) (?P<unit>hours?|minutes?|seconds?) (?P<string>(\w+| )+)', self.remind_user)
                 ]
 
         self.events = []
@@ -61,16 +61,21 @@ class ReminderModule():
         I.E
         bot.add_timed_event(st, et, i, self.send_reminder, [string])
         '''
-        bot.add_timed_event(start_date, end_date, interval, self.send_reminder, func_args=(string, targets))
+        self.bot.add_timed_event(start_date, end_date, interval, self.send_reminder, func_args=(string, targets))
+        
+        #let the user know!
+        self.bot.msg_all("Copy that", targets)
 
 
     def send_reminder(self, string, targets):
-        bot.msg_all(string, targets)
+        self.bot.msg_all(string, targets)
 
+    def close(self):
+        #we don't need to clean up anything special
+        pass
 
 if __name__ == '__main__':
     bot = CommandBot('TimeTester', 'irc.segfault.net.nz', 6667)
     bot.join('#bots')
-    mod = ReminderModule(bot)
-    bot.add_module('Reminders', mod)
+    ReminderModule(bot)
     bot.loop()
