@@ -10,8 +10,8 @@ class LogModule():
 
     def __init__(self, bot, module_name = "Logging"):
         self.commands = [
-                bot.command(r"^!find many (?P<match>\w+)", self.harvest_many),
-                bot.command(r"^!find first (?P<match>\w+)", self.harvest)
+                bot.command(r"^!find all (?P<match>[\w| ]+)", self.harvest_many),
+                bot.command(r"^!find last (?P<match>[\w| ]+)", self.harvest)
                 ]
         self.events = [
                 bot.event('PRIVMSG', self.log_message)
@@ -27,13 +27,12 @@ class LogModule():
         Search the logs for every item that has  the m.group("match")
         value as a substring
         '''
-        print('harvest many')
         messages = []
         results = self.search_logs_greedy(m.group("match"))
         if results:
             for result in results:
-                messages.append ("message:{0}, sender:{1}".format(result.message, result.name))
-            self.bot.msg_all('Found:    '+'|'.join(messages), targets)
+                messages.append ("Message:{0}|Sender:{1}".format(result.message, result.name))
+            self.bot.msg_all('Found: '+', '.join(messages), targets)
 
         else:
             self.bot.msg_all("No matches found", targets)
@@ -44,10 +43,9 @@ class LogModule():
         Search the logs for any message containing the m.group("match") value
         as a substring
         """
-        print('harvest one')
         result = self.search_logs(m.group("match"))
         if result:
-            message = "Found:{0}, sender:{1}".format(result.message, result.name)
+            message = "Found:{0}|Sender:{1}".format(result.message, result.name)
             self.bot.msg_all(message, targets)
 
         else:
