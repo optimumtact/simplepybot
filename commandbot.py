@@ -68,6 +68,16 @@ class CommandBot(IrcSocket):
         guard = re.compile(expr)
         bot = self
         def process(source, action, args, message):
+            #grab nick and nick host
+            nick, nickhost = source.split('!')
+            
+            #unfortunately the irc spec is not sane and when you get addressed in
+            #a privmsg you see your own name as the channel (why not theirs? who knows)
+            #so we have to change it ourselves
+            for i, channel in enumerate(args[:]):
+                if channel == bot.nick:
+                    args[i] = nick
+                    
             #make sure this message was directly addressed
             if direct:
                 if not message.startswith(bot.nick):
@@ -81,7 +91,7 @@ class CommandBot(IrcSocket):
             #If muted, or message private, send it to user not channel
             if (self.is_mute or private) and can_mute:
                 #replace args with name stripped from source
-                args = [source.split('!')[0]]
+                args = [nick]
                 
             #TODO really I should only be passing in what they need [nick, args,
             #message] they can determine action via what they linked it too
