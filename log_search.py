@@ -10,8 +10,10 @@ class LogModule():
 
     def __init__(self, bot, module_name = "Logging"):
         self.commands = [
+                bot.command(r"^!find all (?P<match>[\w| ]+) by (?P<name>\w+)", self.harvest_many_by_name),
                 bot.command(r"^!find all (?P<match>[\w| ]+)", self.harvest_many),
-                bot.command(r"^!find last (?P<match>[\w| ]+)", self.harvest)
+                bot.command(r"^!find (?P<direction>last|first) (?P<match>[\w| ]+)", self.harvest)
+                
                 ]
         self.events = [
                 bot.event('PRIVMSG', self.log_message)
@@ -22,17 +24,33 @@ class LogModule():
         self.bot.add_module(module_name, self)
         self.logs = []
 
+    
+    def harvest_many_by_name(self, nick, nickhost, action, targets, message, m):
+        '''
+        Sarch the logs for every item that has m.group("match") as a substring
+        and was said by nick m.group("name")
+        '''
+        messages = []
+        results = self.search_logs(m.group("match"), name=m.group("name"))
+        if results:
+            for result in results:
+                messages.append(str(result))
+            self.bot.msg_all(', '.join(messages), targets)
+
+        else:
+            self.bot.msg_all("No matches found", targets)
+            
     def harvest_many(self, nick, nickhost, actions, targets, message, m):
         '''
         Search the logs for every item that has  the m.group("match")
         value as a substring
         '''
         messages = []
-        results = self.search_logs_greedy(m.group("match"))
+        results = self.search_logs(m.group("match"))
         if results:
             for result in results:
-                messages.append ("Message:{0}|Sender:{1}".format(result.message, result.name))
-            self.bot.msg_all('Found: '+', '.join(messages), targets)
+                messages.append(str(result))
+            self.bot.msg_all(', '.join(messages), targets)
 
         else:
             self.bot.msg_all("No matches found", targets)
@@ -43,9 +61,16 @@ class LogModule():
         Search the logs for any message containing the m.group("match") value
         as a substring
         """
-        result = self.search_logs(m.group("match"))
-        if result:
-            message = "Found:{0}|Sender:{1}".format(result.message, result.name)
+        direction = m.group("direction")
+        match = m.group("match")
+        if direction == "last":
+            results = self.search_logs(match, reverse=True)
+        
+        else:
+            results = self.search_logs(match)
+        
+        if results:
+            message = str(results[0])
             self.bot.msg_all(message, targets)
 
         else:
@@ -62,37 +87,28 @@ class LogModule():
         are not logged, as they are given a new event type of COMMAND, if you want you could extend
         the logger to log this
         """
-        senders_name = source
+        nick, nickhost = source.split('!')
         #store as a new log entry!
-        self.logs.append(LogEntry(senders_name, message, args))
+        self.logs.append(LogEntry(nick, nickhost, message, args))
 
-    def search_logs(self, string, name=None):
-        """
-        search the logs, returning the first message that contains string as a substring
-        """
-        for entry in self.logs:
-            if string in entry.message:
-                if name:
-                    if entry.name == name:
-                        return entry
-
-                    else:
-                        return None
-
-                else:
-                    return entry
-
-        return None
-
-    def search_logs_greedy(self, string, name = None):
+    def search_logs(self, string, reverse = False, name = None):
         """
         search the logs, returning all messages that contain the string as a substring
         """
+        searchlist = []
+        
+        if reverse:
+            searchlist = self.logs[::-1]
+            
+        else:
+            searchlist = self.logs
+            
         all_matches = []
-        for entry in self.logs:
+        print(len(searchlist))
+        for entry in searchlist:
             if string in entry.message:
                 if name:
-                    if entry.name == name:
+                    if entry.nick == name:
                         all_matches.append(entry)
 
                     else:
@@ -111,17 +127,18 @@ class LogEntry:
     """
     simple storage class representing a logged channel message
     """
-    def __init__(self, name, message, channel):
+    def __init__(self, nick, nickhost, message, channel):
         self.channel = channel
-        self.name = name
+        self.nick = nick
+        self.nickhost = nickhost
         self.message = message
         self.timestamp = datetime.datetime.utcnow()
 
     def __str__(self):
-        return "<{0}> {1}".format(self.name, self.message)
+        return "<{0}> {1}".format(self.nick, self.message)
 
     def __repr__(self):
-        return "name:{0}, message:{1}, channel:{2}, timestamp{3}".format(self.name, self.message, self.channel, self.timestamp)
+        return "nick:{0}, nickhost:{4} message:{1}, channel:{2}, timestamp{3}".format(self.nick, self.message, self.channel, self.timestamp, self.nickhost)
 
 if __name__ == '__main__':
     bot = CommandBot('LumberJack', 'irc.segfault.net.nz', 6667)
