@@ -118,10 +118,8 @@ class CommandBot(IrcSocket):
         def process(source, action, args, message):
             if not event_id == action:
                 return False
-
-            #grab nick and nick host
-            nick, nickhost = source.split('!')
-            func(nick, nickhost, action, args, message)
+                
+            func(source, action, args, message)
             return True
         return process
 
@@ -316,7 +314,7 @@ class CommandBot(IrcSocket):
         else:
             self.channels.append(channel)
 
-    def registered_event(self, nick, nickhost, action, args, message):
+    def registered_event(self, source, action, args, message):
         '''
         this is called when a 001 welcome message gets received
         any actions that require you to be registered with

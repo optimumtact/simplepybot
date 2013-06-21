@@ -52,7 +52,7 @@ class LogModule():
             self.bot.msg_all("No match found", targets)
 
 
-    def log_message(self, nick, nickhost, action, args, message):
+    def log_message(self, source, action, args, message):
         """
         Log messages in order with a queue, these can be searched by search_logs(regex, name)
         takes standard input from self.get_messages() and does cleaning on it, specifically
@@ -62,7 +62,7 @@ class LogModule():
         are not logged, as they are given a new event type of COMMAND, if you want you could extend
         the logger to log this
         """
-        senders_name = nick
+        senders_name = source
         #store as a new log entry!
         self.logs.append(LogEntry(senders_name, message, args))
 
