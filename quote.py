@@ -29,7 +29,7 @@ class QuoteBot():
         self.log_module = bot.get_module('Logging')
         bot.add_module(module_name, self)
 
-    def quote_by_id(self, source, action, targets, message, m):
+    def quote_by_id(self, nick, nickhost, action, targets, message, m):
         """
         Determine if the id given by m.group("id") is assigned for m.group("nick")
         and then return the quote stored under that combination
@@ -54,7 +54,7 @@ class QuoteBot():
         else:
             self.bot.msg_all("There are no quotes for that user", targets)
 
-    def quote_ids_for_name(self, source, action, targets, message, m):
+    def quote_ids_for_name(self, nick, nickhost, action, targets, message, m):
         """
         Determine if the name stored in m.group("nick") has quotes stored in the quotedb
         and is so return a list of them to the channel for display
@@ -71,7 +71,7 @@ class QuoteBot():
         else:
             self.bot.msg_all("No ID's for nickname:"+nick)
 
-    def find_and_remember_quote_by_name(self, source, action, targets, message, m):
+    def find_and_remember_quote_by_name(self, nick, nickhost, action, targets, message, m):
         '''
         Search the channel and find the quote to store
         '''
@@ -82,7 +82,7 @@ class QuoteBot():
                     self.bot.msg_all('Too many matches found, please refine your search', targets)
 
                 else:
-                    entry = self.store_quote(source, results[0])
+                    entry = self.store_quote(nick, results[0])
                     self.bot.msg_all('Stored:'+str(entry), targets)
 
             else:
@@ -92,7 +92,7 @@ class QuoteBot():
             self.bot.msg_all('Not a valid regex, please try another query', targets)
 
 
-    def find_and_remember_quote(self, source, action, targets, message, m):
+    def find_and_remember_quote(self, nick, nickhost, action, targets, message, m):
         """
         Searches the channel backlog with the given regex, if it finds more than one
         match it warns you and displays them, if it finds one match it stores that as a
@@ -109,7 +109,7 @@ class QuoteBot():
                 else:
                     #if only one match store the quote along with some supporting info
                     #reminder: results[0] is a log entry instance, see commandbot for source of this
-                    entry = self.store_quote(source, results[0])
+                    entry = self.store_quote(nick, results[0])
                     self.bot.msg_all("Stored:"+str(entry), targets)
 
             else:
@@ -118,7 +118,7 @@ class QuoteBot():
         except re.error:
             self.bot.msg_all('Not a valid regex, please try another query', targets)
 
-    def store_quote(self, source, entry):
+    def store_quote(self, nick, entry):
         """
         Takes a log entry and stores it in the quote database quotedb. They are indexed by a tuple of (nick, id) where
         id is an number, furthermore under the key nick there is a QuoteData object which is responsible for managing

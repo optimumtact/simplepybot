@@ -24,7 +24,7 @@ class ReminderModule():
         self.events = []
 
 
-    def remind_user(self, source, action, targets, message, m):
+    def remind_user(self, nick, nickhost, action, targets, message, m):
         '''
         Create a time event that will send a message when
         the elapsed time has passed
@@ -32,10 +32,10 @@ class ReminderModule():
 
         number = m.group('num')
         number = int(number)
-
+        name = nick
         unit = m.group('unit')
         string = m.group('string')
-
+        string = "{0}: {1}".format(name, string)
         '''
         The start date is now
         the end date is now + num*units

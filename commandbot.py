@@ -16,7 +16,7 @@ class CommandBot(IrcSocket):
     A framework for adding more modules to do more complex stuff
     '''
 
-    def __init__(self, nick, network, port, max_log_len = 100):
+    def __init__(self, nick, network, port, max_log_len = 100, authmodule=None):
         super(CommandBot, self).__init__()
         assert network and port and nick
         self.modules = dict()
@@ -24,6 +24,10 @@ class CommandBot(IrcSocket):
         self.nick = nick
         self.server = network
         self.port = port
+        
+        #if no authmodule is passed through, use the default host/ident module
+        #if not authmodule:
+        #    authmodule = new IdentAuth()
         
         #variables for determining when the bot is registered
         self.registered = False
@@ -92,18 +96,14 @@ class CommandBot(IrcSocket):
             if (self.is_mute or private) and can_mute:
                 #replace args with name stripped from source
                 args = [nick]
-                
-            #TODO really I should only be passing in what they need [nick, args,
-            #message] they can determine action via what they linked it too
-            #maybe also include nickhost
 
             #check it matches our command regex
             m = guard.match(message)
             if not m:
                 return False
 
-            #apply the function - TODO catch errors here and log
-            func(source, action, args, message, m)
+            #call the function
+            func(nick, nickhost, action, args, message, m)
             return True
 
         return process
@@ -119,7 +119,9 @@ class CommandBot(IrcSocket):
             if not event_id == action:
                 return False
 
-            func(source, action, args, message)
+            #grab nick and nick host
+            nick, nickhost = source.split('!')
+            func(nick, nickhost, action, args, message)
             return True
         return process
 
@@ -246,13 +248,13 @@ class CommandBot(IrcSocket):
 
         return
 
-    def list_modules(self, source, action, targets, message, m):
+    def list_modules(self, nick, nickhost, action, targets, message, m):
         '''
         Send a list of all loaded modules
         '''
         self.msg_all(', '.join(self.modules.keys()), targets)
 
-    def end(self, source, action, targets, message, m):
+    def end(self, nick, nickhost, action, targets, message, m):
         for module in self.modules:
             module = self.modules[module]
             module.close()
@@ -260,7 +262,7 @@ class CommandBot(IrcSocket):
         self.quit('Goodbye for now')
         sys.exit()
 
-    def mute(self, source, action, targets, message, m):
+    def mute(self, nick, nickhost, action, targets, message, m):
         '''
         Mute/unmute the bot
         '''
@@ -314,7 +316,7 @@ class CommandBot(IrcSocket):
         else:
             self.channels.append(channel)
 
-    def registered_event(self, source, action, args, message):
+    def registered_event(self, nick, nickhost, action, args, message):
         '''
         this is called when a 001 welcome message gets received
         any actions that require you to be registered with

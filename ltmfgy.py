@@ -17,7 +17,7 @@ class GoogleModule():
 
         self.events = []
 
-    def return_search_link(self, source, action, targets, message, m):
+    def return_search_link(self, nick, nickhost, action, targets, message, m):
         search_terms = m.group("searchterms").replace(" ", "+")
         self.bot.msg_all("http://lmgtfy.com/?q="+search_terms, targets)
         

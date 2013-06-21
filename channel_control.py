@@ -15,7 +15,7 @@ class ControlModule():
         self.registered = False
 
 
-    def join(self, source, action, targets, message, m):
+    def join(self, nick, nickhost, action, targets, message, m):
         '''
         Join a channel live
         '''
@@ -30,7 +30,7 @@ class ControlModule():
         else:
             self.bot.msg_all("I am in that channel already", targets)
 
-    def leave(self, source, action, targets, message, m):
+    def leave(self, nick, nickhost, action, targets, message, m):
         '''
         leave a channel live
         '''
@@ -46,7 +46,7 @@ class ControlModule():
         else:
             self.bot.msg_all("I am not in that channel", targets)
 
-    def msg_user(self, source, action, targets, message, m):
+    def msg_user(self, nick, nickhost, action, targets, message, m):
         '''
         Send the user a message from the bot
         '''

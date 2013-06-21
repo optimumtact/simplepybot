@@ -30,13 +30,13 @@ class AliasBot():
         self.honk = self.honk.swapcase()
         return self.honk
 
-    def honk(self, source, action, targets, message, m):
+    def honk(self, nick, nickhost, action, targets, message, m):
         '''
         Honk at anyone that highlighted us.
         '''
         self.bot.msg_all(self.alternate_honk(), targets)
 
-    def learn(self, source, action, targets, message, m):
+    def learn(self, nick, nickhost, action, targets, message, m):
         '''
         Learn a new abbreviation.
         '''
@@ -44,7 +44,7 @@ class AliasBot():
         index = str((self.module_name, m.group('abbr')))
         self.bot.storage[index] = m.group('long')
 
-    def forget(self, source, action, targets, message, m):
+    def forget(self, nick, nickhost, action, targets, message, m):
         '''
         Forget about an abbreviation.
         '''
@@ -56,7 +56,7 @@ class AliasBot():
         else:
             self.bot.msg_all("Sorry, I don't know about %s." % abbr, targets)
 
-    def retrieve(self, source, action, targets, message, m):
+    def retrieve(self, nick, nickhost, action, targets, message, m):
         '''
         Retrieves a command.
         '''
@@ -67,7 +67,7 @@ class AliasBot():
         else:
             self.bot.msg_all("Sorry, I don't know about %s." % abbr, targets)
 
-    def list_abbrievations(self, source, action, targets, message, m):
+    def list_abbrievations(self, nick, nickhost, action, targets, message, m):
         """
         List all known abbrievation commands
         """
