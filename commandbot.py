@@ -111,8 +111,7 @@ class CommandBot(IrcSocket):
             
             if auth_level:
                 if not bot.auth.is_allowed(nick, nickhost, auth_level):
-                    bot.msg_all('{0} is not authenticated to do
-                                     that'.format(nick), args)
+                    bot.msg_all('{0} is not authenticated to do that'.format(nick), args)
                     return False
 
             #check it matches our command regex
