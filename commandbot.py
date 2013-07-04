@@ -75,7 +75,7 @@ class CommandBot(IrcSocket):
             can_mute - Can this message be muted?
             private - Is this message always going to a private channel?
             auth_level - Level of auth this command requires (users who do not have
-                   this level will be ignored
+                         this level will be ignored
 
         These are intended to be evaluated against user messages and when a match is found
         it calls the associated function, passing through the match object to allow you to
@@ -86,7 +86,6 @@ class CommandBot(IrcSocket):
         def process(source, action, args, message):
             #grab nick and nick host
             nick, nickhost = source.split('!')
-            
             #unfortunately the irc spec is not sane and when you get addressed in
             #a privmsg you see your own name as the channel (why not theirs? who knows)
             #so we have to change it ourselves
@@ -109,15 +108,16 @@ class CommandBot(IrcSocket):
                 #replace args with name stripped from source
                 args = [nick]
             
-            if auth_level:
-                if not bot.auth.is_allowed(nick, nickhost, auth_level):
-                    bot.msg_all('{0} is not authenticated to do that'.format(nick), args)
-                    return False
 
             #check it matches our command regex
             m = guard.match(message)
             if not m:
                 return False
+
+            if auth_level:
+                if not bot.auth.is_allowed(nick, nickhost, auth_level):
+                    bot.msg_all('{0} is not authenticated to do that'.format(nick), args)
+                    return True
 
             #call the function
             func(nick, nickhost, action, args, message, m)
