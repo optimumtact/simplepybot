@@ -1,4 +1,4 @@
-class IdentAuth
+class IdentAuth:
     def __init__(self):
         pass
 
