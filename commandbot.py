@@ -29,7 +29,7 @@ class CommandBot(IrcSocket):
         
         #if no authmodule is passed through, use the default host/ident module
         if not authmodule:
-            self.auth = new IdentAuth()
+            self.auth = IdentAuth()
         
         else:
             self.auth = authmodule
