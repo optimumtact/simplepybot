@@ -8,6 +8,8 @@ from time import sleep
 from collections import deque
 import logging
 
+from authentication import IdentAuth
+
 
 
 class CommandBot(IrcSocket):
@@ -26,9 +28,12 @@ class CommandBot(IrcSocket):
         self.port = port
         
         #if no authmodule is passed through, use the default host/ident module
-        #if not authmodule:
-        #    authmodule = new IdentAuth()
+        if not authmodule:
+            self.auth = new IdentAuth()
         
+        else:
+            self.auth = authmodule
+
         #variables for determining when the bot is registered
         self.registered = False
         self.channels = []
@@ -37,9 +42,11 @@ class CommandBot(IrcSocket):
         self.is_mute = False
 
         self.commands = [
-                self.command('list modules', self.list_modules, direct=True),
-                self.command('quit', self.end, direct=True),
-                self.command('mute', self.mute, direct=True, can_mute=False),
+                self.command('list modules', self.list_modules, direct=True,
+                             auth_level=20),
+                self.command('quit', self.end, direct=True, auth_level=20),
+                self.command('mute', self.mute, direct=True, can_mute=False,
+                             auth_level=20),
                 ]
         #TODO I need to catch 441 or 436 and handle changing bot name by adding
         #a number or an underscore
@@ -53,17 +60,22 @@ class CommandBot(IrcSocket):
         self.timed_events = []
 
 
-    def command(self, expr, func, direct=False, can_mute=True, private=False):
+    def command(self, expr, func, direct=False, can_mute=True, private=False,
+                auth_level=0):
         '''
         Helper function that constructs a command handler suitable for CommandBot.
 
-        Takes a regex source string and a function.
-        there are two flag values, direct and private. direct sets it up so the
-        bot will only respond to the command if it has had it's nickname 
-        prefixed to the command i.e botname: quit or botname quit, private
-        determines if the command will still be sent to the common channel if
-        the bot has been muted (results sent via privmsg)
-        #TODO - implemented the mute framework :p
+        args:
+            expr - regex string to be matched against user message
+            func - function to be called upon a match
+
+        kwargs:
+            direct - this message must start with the bots nickname i.e botname
+                     quit or botname: quit
+            can_mute - Can this message be muted?
+            private - Is this message always going to a private channel?
+            auth_level - Level of auth this command requires (users who do not have
+                   this level will be ignored
 
         These are intended to be evaluated against user messages and when a match is found
         it calls the associated function, passing through the match object to allow you to
@@ -87,7 +99,7 @@ class CommandBot(IrcSocket):
                 if not message.startswith(bot.nick):
                     return False
 
-                #strip nick from bot
+                #strip nick from message
                 message = message[len(bot.nick):]
                 #strip away any syntax left over from addressing
                 message = message.lstrip(': ')
@@ -96,6 +108,12 @@ class CommandBot(IrcSocket):
             if (self.is_mute or private) and can_mute:
                 #replace args with name stripped from source
                 args = [nick]
+            
+            if auth_level:
+                if not bot.auth.is_allowed(nick, nickhost, auth_level):
+                    bot.msg_all('{0} is not authenticated to do
+                                     that'.format(nick), args)
+                    return False
 
             #check it matches our command regex
             m = guard.match(message)
