@@ -3,7 +3,7 @@ import traceback as tb
 import logging
 
 class IdentAuth:
-    def __init__(self, bot, module_name='IdentAuth', log_level = logging.WARNING):
+    def __init__(self, bot, module_name='IdentAuth', log_level = logging.INFO):
         self.bot = bot
         self.log = logging.getLogger(bot.log_name+'.'+module_name)
         self.log.setLevel(log_level)
@@ -14,14 +14,15 @@ class IdentAuth:
         self.db.commit()
         self.bot.add_module(module_name, self)
         self.commands = [
-                bot.command(r'!add user (?P<nickhost>\S+) with level (?P<level>\d+)', self.add_user_c, auth_level=20),
-                bot.command(r'!update user (?P<nickhost>\S+) with level (?P<level>\d+)', self.update_user_c, auth_level=20),
+                bot.command(r'!add user (?P<nickhost>\S+) (?P<level>\d+)', self.add_user_c, auth_level=20),
+                bot.command(r'!update user (?P<nickhost>\S+) (?P<level>\d+)', self.update_user_c, auth_level=20),
                 bot.command(r'!delete user (?P<nickhost>\S+)', self.del_user_c, auth_level=20),
+                bot.command(r'!user level(?P<nickhost> \S+)?', self.show_user_c),
                 bot.command(r'!bootstrap auth', self.bootstrap),
                 ]
 
         self.events = []
-        self.log.debug('Finished intialising {0}'.format(module_name))
+        self.log.info('Finished intialising {0}'.format(module_name))
         
     def add_user_c(self, nick, nickhost, action, targets, message, m):
         nickhost = m.group('nickhost')
@@ -40,6 +41,18 @@ class IdentAuth:
         result = self.delete_user(nickhost)
         self.bot.msg_all(result, targets)
     
+    def show_user_c(self, nick, nickhost, action, targets, message, m):
+        given_nickhost = m.group('nickhost')
+        level = 100
+        if given_nickhost:
+            given_nickhost = given_nickhost.lstrip(' ')
+            level = self.get_level(given_nickhost)
+            self.bot.msg_all(level, targets)
+        
+        else:
+            level = self.get_level(nickhost)
+            self.bot.msg_all(level, targets)
+        
     def bootstrap(self, nick, nickhost, action, targets, message, m):
         try:
             result = self.db.execute('''SELECT * FROM auth''').fetchall()
@@ -63,7 +76,7 @@ class IdentAuth:
             result = c.fetchone()
             if result:
                 users_level = result[0]
-                self.log.debug('auth check for {0} requires {1} and has {2}'.format(nick, level, users_level))
+                self.log.debug('auth check for {0} requires <= {1} and has {2}'.format(nick, level, users_level))
                 return users_level <= level
             
             else:
@@ -95,7 +108,7 @@ class IdentAuth:
             else:
                 result = self.db.execute('''UPDATE OR ABORT auth SET level=? WHERE name=?''', [level, nickhost]).fetchall()
                 self.db.commit()
-                self.log.debug('Successfully updated user {0}'.format(nickhost))
+                self.log.info('Successfully updated user {0}, with level {1}'.format(nickhost, level))
                 return 'Successfully updated user {0}'.format(nickhost)
             
         except sqlite3.Error as e:
@@ -114,7 +127,7 @@ class IdentAuth:
             else:
                 self.db.execute('''INSERT INTO auth VALUES(?, ?)''',[nickhost, level])
                 self.db.commit()
-                self.log.debug('Successfully added user {0}'.format(nickhost))
+                self.log.info('Successfully added user {0} with level {1}'.format(nickhost, level))
                 return 'Successfully added user {0}'.format(nickhost)
         
         except sqlite3.Error as e:
@@ -129,7 +142,7 @@ class IdentAuth:
             if self.is_user(nickhost):
                 self.db.execute('''DELETE FROM auth WHERE name=?''', [nickhost])
                 self.db.commit()
-                self.log.debug('Succesfully deleted user:{0}'.format(nickhost))
+                self.log.info('Succesfully deleted user {0}'.format(nickhost))
                 return 'Succesfully deleted user {0}'.format(nickhost)
             
             else:
@@ -142,6 +155,27 @@ class IdentAuth:
                                                                                         e.args[0]))
             return 'Unable to delete user {0} due to a database error {1}'.format(nickhost,
                                                                                    e.args[0])
+    
+    def get_level(self, nickhost):
+        try:
+            if self.is_user(nickhost):
+                result = self.db.execute('SELECT level FROM auth WHERE name=?', [nickhost]).fetchone()
+                if result:
+                    result = result[0]
+                    self.log.debug('{0} level is {1}'.format(nickhost, result))
+                    return '{0} level is {1}'.format(nickhost, result)
+                
+                else:
+                    self.log.warning('User {0} could not be found but should exist'.format(nickhost))
+                    return 'User {0} could not be retrieved'.format(nickhost)
+            
+            else:
+                self.log.debug('User {0} does not exist'.format(nickhost))
+                return 'User {0} does not exist'.format(nickhost)
+                
+        except sqlite3.Error as e:
+            self.log.exception('Could not get level for {0}'.format(nickhost))
+            return 'Could not get level for {0}'.format(nickhost)
             
     def close(self):
         #we don't need to clean up anything special
