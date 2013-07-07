@@ -18,7 +18,7 @@ class CommandBot(IrcSocket):
     A framework for adding more modules to do more complex stuff
     '''
 
-    def __init__(self, nick, network, port, max_log_len = 100, authmodule=None, db_file = 'bot.db', log_name='BotCore', log_level=logging.WARNING):
+    def __init__(self, nick, network, port, max_log_len = 100, authmodule=None, db_file = 'bot.db', log_name='BotCore', log_level=logging.INFO):
         super(CommandBot, self).__init__()
         assert network and port and nick
         self.modules = dict()
@@ -32,7 +32,7 @@ class CommandBot(IrcSocket):
         self.log = logging.getLogger(self.log_name)
         self.log.setLevel(log_level)
         h = logging.StreamHandler()
-        f = logging.Formatter("%(name)s %(levelname)s %(funcName)s %(message)s")
+        f = logging.Formatter("%(name)s %(levelname)s %(message)s")
         h.setFormatter(f)
         self.log.addHandler(h)
         #create a ref to the db connection
