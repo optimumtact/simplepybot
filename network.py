@@ -1,6 +1,6 @@
 import re
 import socket
-import logging
+#import logging
 
 class IrcSocket(object):
     '''
@@ -35,7 +35,7 @@ class IrcSocket(object):
 
         Formatted as required by rfc 1459
         '''
-        print("Sending data: %s" % line)
+        #logging.debug("Sending data: %s" % line)
         line = line.replace('\r', '').replace('\n', '') + '\r\n'
         totalsent = 0
         while totalsent < len(line):
@@ -81,7 +81,7 @@ class IrcSocket(object):
         '''
         Utility method turning an ircmsg into a nicely formatted tuple for ease of use.
         '''
-        logging.debug(message)
+        #logging.debug(message)
         m = self.ircmsg.match(message)
         if not m:
             logging.warn('Couldn\'t match message {0}'.format(message))
@@ -108,7 +108,7 @@ class IrcSocket(object):
             params = params.lstrip(' ')
             params = params.split(' ')
 
-        logging.debug('Cleaned message, prefix = {0}, command = {1}, params = {2}, postfix = {3}'.format(prefix, command, params, postfix))
+        #logging.debug('Cleaned message, prefix = {0}, command = {1}, params = {2}, postfix = {3}'.format(prefix, command, params, postfix))
         return (prefix, command, params, postfix)
 
     def get_messages(self):
