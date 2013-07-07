@@ -2,7 +2,7 @@ from network import IrcSocket
 import shelve
 import sys
 import re
-
+import sqlite3
 from datetime import datetime, timedelta
 from time import sleep
 from collections import deque
@@ -18,7 +18,7 @@ class CommandBot(IrcSocket):
     A framework for adding more modules to do more complex stuff
     '''
 
-    def __init__(self, nick, network, port, max_log_len = 100, authmodule=None):
+    def __init__(self, nick, network, port, max_log_len = 100, authmodule=None, db_file = 'bot.db', log_name='BotCore', log_level=logging.WARNING):
         super(CommandBot, self).__init__()
         assert network and port and nick
         self.modules = dict()
@@ -27,9 +27,20 @@ class CommandBot(IrcSocket):
         self.server = network
         self.port = port
         
+        #set up logging stuff
+        self.log_name = log_name
+        self.log = logging.getLogger(self.log_name)
+        self.log.setLevel(log_level)
+        h = logging.StreamHandler()
+        f = logging.Formatter("%(name)s %(levelname)s %(funcName)s %(message)s")
+        h.setFormatter(f)
+        self.log.addHandler(h)
+        #create a ref to the db connection
+        self.db = sqlite3.connect(db_file)
+        
         #if no authmodule is passed through, use the default host/ident module
         if not authmodule:
-            self.auth = IdentAuth()
+            self.auth = IdentAuth(self)
         
         else:
             self.auth = authmodule
@@ -86,6 +97,9 @@ class CommandBot(IrcSocket):
         def process(source, action, args, message):
             #grab nick and nick host
             nick, nickhost = source.split('!')
+            #we have some whitespace to remove
+            nickhost = nickhost.strip(' ')
+            
             #unfortunately the irc spec is not sane and when you get addressed in
             #a privmsg you see your own name as the channel (why not theirs? who knows)
             #so we have to change it ourselves
@@ -224,7 +238,7 @@ class CommandBot(IrcSocket):
         for m in self.get_messages():
             was_command = False
             source, action, args, message = m
-            print(m)
+            self.log.debug('Logic loop event {0}'.format(m))
 
             #if a priv message we first pass it through the command handlers
             if message and action == "PRIVMSG":
@@ -275,6 +289,7 @@ class CommandBot(IrcSocket):
             module.close()
 
         self.quit('Goodbye for now')
+        self.db.close()
         sys.exit()
 
     def mute(self, nick, nickhost, action, targets, message, m):
