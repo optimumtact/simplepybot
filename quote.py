@@ -1,5 +1,6 @@
 from commandbot import *
-from log_search import LogModule
+import logging
+import sqlite3
 import shelve
 
 #TODO implement delete command for quotes, clean up quote command syntax
@@ -15,170 +16,105 @@ class QuoteBot():
 
     """
     nick = "quotebot"
-    def __init__(self, bot, module_name='Quotes'):
+    def __init__(self, bot, module_name='Quotes', log_level = logging.INFO):
         self.commands = [
-                command(r"!quote (?P<id>\d+) by (?P<nick>\S+)", self.quote_by_id),
-                command(r"^!quote (?P<match>[\w\s]+) by (?P<nick>\S+)", self.find_and_remember_quote_by_name),
-                command(r"!quotes for (?P<nick>\S+)", self.quote_ids_for_name),
-                command(r"^!quote (?P<match>[\w\s]+)", self.find_and_remember_quote),
+                bot.command(r"!quote (?P<id>\d+) *$", self.quote_by_id),
+                bot.command(r"!quotes for (?P<nick>\S+)", self.quotes_for_name, private=True),
+                bot.command(r"^!quote (?P<quote>.+) by (?P<nick>\S+)", self.add_quote),
+                bot.command(r"^!quote (?:\d{2}:\d{2} )?< (?P<nick>\S+)> +(?P<quote>.+)", self.add_quote),
                 ]
         self.events = []
-
+        self.db = bot.db
+        
         self.module_name = module_name
         self.bot = bot
-        self.log_module = bot.get_module('Logging')
+        self.log = logging.getLogger(bot.log_name+'.'+module_name)
+        self.log.setLevel(log_level)
         bot.add_module(module_name, self)
-
+        self.module_name = module_name
+        
+        #I know that there could possibly be sql injection here, but if they have module name control they are trusted anyway
+        self.db.execute('CREATE TABLE IF NOT EXISTS {0} (id INTEGER PRIMARY KEY, quote TEXT, nick TEXT)'.format(module_name))
+        self.db.execute('CREATE INDEX IF NOT EXISTs quote_nick_index ON {0} (quote, nick)'.format(module_name))
+        self.db.execute('CREATE INDEX IF NOT EXISTS nick_index ON {0} (nick)'.format(module_name))
+        self.db.commit()
+        self.log.info('Finished intialising {0}'.format(module_name))
+        
     def quote_by_id(self, nick, nickhost, action, targets, message, m):
-        """
-        Determine if the id given by m.group("id") is assigned for m.group("nick")
-        and then return the quote stored under that combination
-        """
-        nick = str(m.group("nick"))
-        quote_id = int(m.group("id"))
-        ids_index = str((self.module_name, nick))
-
-        if ids_index in self.bot.storage:
-            quote_ids = self.bot.storage[ids_index]
-            if quote_id in quote_ids:
-                index = str((self.module_name, (nick, quote_id)))
-                if index in self.bot.storage:
-                    self.bot.msg_all(str(self.bot.storage[index]), targets)
-
-                else:
-                    self.bot.msg_all('Missing quote for index:'+index, targets)
-
-            else:
-                self.bot.msg_all("There is no quote with that id for this user", targets)
-
-        else:
-            self.bot.msg_all("There are no quotes for that user", targets)
-
-    def quote_ids_for_name(self, nick, nickhost, action, targets, message, m):
-        """
-        Determine if the name stored in m.group("nick") has quotes stored in the quotedb
-        and is so return a list of them to the channel for display
-        """
-        nick = str(m.group("nick"))
-        index = str((self.module_name, nick))
-        if index in self.bot.storage:
-            ids = self.bot.storage[index]
-            strids = list()
-            for x in ids:
-                strids.append(str(x))
-            self.bot.msg_all('['+','.join(strids)+']', targets)
-
-        else:
-            self.bot.msg_all("No ID's for nickname:"+nick)
-
-    def find_and_remember_quote_by_name(self, nick, nickhost, action, targets, message, m):
         '''
-        Search the channel and find the quote to store
+        Find a quote with the given id
         '''
+        id = int(m.group('id'))
+        
         try:
-            results = self.log_module.search_logs_greedy(m.group('match'), name = m.group('nick'))
-            if results:
-                if len(results) > 1:
-                    self.bot.msg_all('Too many matches found, please refine your search', targets)
-
-                else:
-                    entry = self.store_quote(nick, results[0])
-                    self.bot.msg_all('Stored:'+str(entry), targets)
-
+            result = self.db.execute('SELECT * FROM {0} WHERE id=?'.format(self.module_name), [id]).fetchone()
+            if result:
+                self.log.debug('Found quote {0} for id {1}'.format(result[1], id))
+                self.bot.msg_all(result[1], targets)
+            
             else:
-                self.bot.msg_all('No match found, please try another query', targets)
-
-        except re.error:
-            self.bot.msg_all('Not a valid regex, please try another query', targets)
-
-
-    def find_and_remember_quote(self, nick, nickhost, action, targets, message, m):
-        """
-        Searches the channel backlog with the given regex, if it finds more than one
-        match it warns you and displays them, if it finds one match it stores that as a
-        quote. If no match is found it tells you so
-
-        regex is given by m.group("match")
-        """
+                self.log.debug('No quote with id:{0}'.format(id))
+                self.bot.msg_all('No quote with that id'.format(id), targets)
+         
+        except sqlite3.Error as e:
+            self.log.exception('Unable to get quote with id {0}'.format(id))
+            self.bot.msg_all('Unable to retrieve quote from database'.format(id))
+        
+    def quotes_for_name(self, nick, nickhost, action, targets, message, m):
+        '''
+        Find all quotes with given nick
+        '''
+        given_nick = m.group('nick')
         try:
-            results = self.log_module.search_logs_greedy(m.group("match"))
-            if results:
-                if len(results) > 1:
-                    self.bot.msg_all("Too many matches found, please refine your search", targets)
-
-                else:
-                    #if only one match store the quote along with some supporting info
-                    #reminder: results[0] is a log entry instance, see commandbot for source of this
-                    entry = self.store_quote(nick, results[0])
-                    self.bot.msg_all("Stored:"+str(entry), targets)
-
+            result = self.db.execute('SELECT * FROM {0} WHERE nick = ?'.format(self.module_name), [given_nick]).fetchall()
+            if result:
+                result = ",".join(map(self.print_result, result))
+                self.log.debug("Request for all quotes of user {0} : {1}".format(given_nick, result))
+                self.bot.msg_all(result, targets)
+            
             else:
-                self.bot.msg_all('No match found, please try another query', targets)
-
-        except re.error:
-            self.bot.msg_all('Not a valid regex, please try another query', targets)
-
-    def store_quote(self, nick, entry):
-        """
-        Takes a log entry and stores it in the quote database quotedb. They are indexed by a tuple of (nick, id) where
-        id is an number, furthermore under the key nick there is a QuoteData object which is responsible for managing
-        the id's for the user who's nick it is stored under, it supports getting a new id and freeing old ones, as well
-        as returning a copy of all the id's that that user has quotes stored under
-
-        source: user who requested the quote be stored
-        entry: a log entry in the form of (senders_name, targets, message, timestamp)
-        """
-        #check to see if this user exists and get the id if he does
-        #otherwise we store this new user and the current id
-        quote_id = 0
-        #convert to string for indexing
-        name = str(entry.name)
-        index = str((self.module_name, name))
-        if index in self.bot.storage:
-            #get the list of used ids
-            quote_data = self.bot.storage[index]
-            #search through it to find first gap or next value
-            quote_id = find_next_id(quote_data)
-            #insert the quote_id into the list and store the newly changed list
-            #we use insert ast the find_next_id method expects a sorted list
-            quote_data.insert(quote_id, quote_id)
-            self.bot.storage[index] = quote_data
-
-        else:
-            #initialise this new users ids list
-            self.bot.storage[index] = [0]
-
-        #convert the combo of entry name + quote_id into a string to use as the index
-        index = str((self.module_name,(name, quote_id)))
-        #If this user and id combination already exists we have a collision
-        if index in self.bot.storage:
-            #TODO raise a nicer exception here
-            raise Exception("User and ID collision:"+str((name, quote_id)))
-
-        else:
-            self.bot.storage[index] = entry
-            return entry
-
-def find_next_id(id_list):
-    length = len(id_list)
-    for index, q_id in enumerate(id_list):
-        if index+1 < length:
-            #while we still can move along
-            next_id = id_list[index+1]
-        else:
-            #end of list, return q_id + 1
-            next_id = q_id + 1
-            return q_id + 1
-
-        if q_id + 1 < next_id:
-            # we found a gap in id's
-            return q_id + 1
-
+                self.log.debug('User {0} has no quotes in quote database'.format(given_nick))
+                self.bot.msg_all('User {0} has no quotes in quote database'.format(given_nick), targets)
+        
+        except sqlite3.Error as e:
+            self.log.exception('Unable to get quotes for {0} due to database error'.format(given_nick))
+            self.bot.msg_all('Unable to retrieve quotes for user {0}'.format(given_nick), targets)
+    
+    def add_quote(self, nick, nickhost, action, targets, message, m):
+        '''
+        Add a quote for a given user
+        '''
+        given_nick = m.group('nick')
+        quote = m.group('quote')
+        try:
+            self.db.execute('INSERT INTO {0} (quote, nick) VALUES (?, ?)'.format(self.module_name), [quote, given_nick])
+            self.db.commit()
+            result = self.db.execute('SELECT id FROM {0} WHERE quote=? AND nick=?'.format(self.module_name), [quote, given_nick]).fetchone()
+            if not result:
+                self.log.warning('Could not find quote {0} for nick {1} after adding it'.format(quote, given_nick))
+                self.bot.msg_all('Could not find quote after adding it')
+                return
+            
+            id = result[0]
+            self.log.debug("New quote added '{0}' for {1} by {2}, it's id is {3}".format(quote, given_nick, nick, id))
+            self.bot.msg_all("Added quote successfully, it's id is {0}".format(id), targets)
+        
+        except sqlite3.Error as e:
+            self.db.rollback()
+            self.log.exception("Unable to add quote '{0}' for nick {1}, requested by {2}".format(quote, given_nick, nick))
+            self.bot.msg_all('Unable to add quote due to database error', targets)
+ 
+    def print_result(self, result):
+        return '\"{0}\" -{1}'.format(result[1], result[0])
+    
+    def close(self):
+        self.log.info("Finished cleaning up {0}".format(self.module_name))
+        #no cleanup necessary
+        pass
+        
 if __name__ == '__main__':
-    bot = CommandBot('betterthanscorecard', 'irc.segfault.net.nz', 6667)
-    #add the log and quote modules
-    #note Quotebot relies on log module
-    mod = LogModule(bot)
-    mod = QuoteBot(bot)
+    bot = CommandBot('quotebot', 'irc.segfault.net.nz', 6667)
+    #add the quote module
+    mod = QuoteBot(bot, log_level = logging.DEBUG)
     bot.join('#bots')
     bot.loop()
