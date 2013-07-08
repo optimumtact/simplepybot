@@ -1,8 +1,5 @@
-Currently only the lmgtfy module works
+All the modules work now, at least I think they do
 
-every other module is broken and needs tweaks to get it to
-work, log search and quotebot are probably very badly broken
-as I ripped a lot of stuff out of it's old place in commandbot
+Better doc to be coming in the days ahead
 
-
-the irc base module works (obviously)
+Likely markdown based
