@@ -69,7 +69,13 @@ class ReminderModule():
 
     def send_reminder(self, string, targets):
         self.bot.msg_all(string, targets)
-
+    
+    def syntax(self):
+        return  '''
+                Reminder module supports
+                !remind me in {x} [minutes|seconds|hours] {some reminder string}
+                '''
+                
     def close(self):
         #we don't need to clean up anything special
         pass

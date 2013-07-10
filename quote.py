@@ -21,7 +21,7 @@ class QuoteBot():
                 bot.command(r"!quote (?P<id>\d+) *$", self.quote_by_id),
                 bot.command(r"!quotes for (?P<nick>\S+)", self.quotes_for_name, private=True),
                 bot.command(r"^!quote (?P<quote>.+) by (?P<nick>\S+)", self.add_quote),
-                bot.command(r"^!quote (?:\d{2}:\d{2} )?< (?P<nick>\S+)> +(?P<quote>.+)", self.add_quote),
+                bot.command(r"^!quote (?:\d{2}:\d{2} )?<.?(?P<nick>\S+)> +(?P<quote>.+)", self.add_quote),
                 ]
         self.events = []
         self.db = bot.db
@@ -107,6 +107,15 @@ class QuoteBot():
     def print_result(self, result):
         return '\"{0}\" -{1}'.format(result[1], result[0])
     
+    def syntax(self):
+        return '''
+               Quote modules supports
+               !quotes for {user}
+               !quote with id {some id}
+               !quote {some string quote} by {some nick}
+               !quote 16:40 < {somenick}> definitely time for a syntax command
+               '''
+
     def close(self):
         self.log.info("Finished cleaning up {0}".format(self.module_name))
         #no cleanup necessary

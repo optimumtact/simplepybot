@@ -150,7 +150,15 @@ class AliasBot():
         except sqlite3.Error as e:
             self.log.error('Could not verify {0} exists'.format(abbr))
             return False
-            
+    
+    def syntax(self):
+        return  '''
+                Alias supports
+                !learn {x} as {y}
+                !{x}
+                !forget {x}
+                !list_abbr
+                '''
     def close(self):
         #we don't do anything special
         pass

@@ -180,7 +180,17 @@ class IdentAuth:
     def close(self):
         #we don't need to clean up anything special
         pass
-        
+    
+    def syntax(self):
+        return  '''
+                Authentication module supports
+                !bootstrap auth
+                !add user {hostname} {level}
+                !update user {hostname} {level}
+                !delete user {hostname}
+                !user level {hostname}
+                '''
+                
 class DummyBot:
     def __init__(self):
         self.db = sqlite3.connect(':memory:')

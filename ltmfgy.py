@@ -24,7 +24,10 @@ class GoogleModule():
     def close(self):
         #we do nothing
         pass
-
+    
+    def syntax(self):
+        return ''
+        
 if __name__ == '__main__':
     bot = CommandBot("HelpBot", "irc.segfault.net.nz", 6667)
     gb = GoogleModule(bot)

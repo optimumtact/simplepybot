@@ -104,7 +104,6 @@ class LogModule():
             searchlist = self.logs
             
         all_matches = []
-        print(len(searchlist))
         for entry in searchlist:
             if string in entry.message:
                 if name:
@@ -118,7 +117,15 @@ class LogModule():
                     all_matches.append(entry)
 
         return all_matches
-
+    
+    def syntax(self):
+        return '''
+            Log Search Module supports
+            !find all {some string}
+            !find all {some string} by {some name}
+            !find [list|first] {some string}
+            '''
+        
     def close(self):
         #we don't do anything special
         pass
