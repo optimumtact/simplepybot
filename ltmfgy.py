@@ -1,5 +1,6 @@
 from commandbot import *
 import sys
+import logger
 
 class GoogleModule():
     """
@@ -14,19 +15,22 @@ class GoogleModule():
         self.commands = [
                 bot.command(r"!help (?P<searchterms>[\w\s]+)", self.return_search_link)
                 ]
-
+        
+        self.log = logger.getLogger('{0}.{1]'.format(bot.log_name, module_name))
         self.events = []
+        self.log.info('Finished intialising {0}'.format(module_name))
 
     def return_search_link(self, nick, nickhost, action, targets, message, m):
         search_terms = m.group("searchterms").replace(" ", "+")
-        self.bot.msg_all("http://lmgtfy.com/?q="+search_terms, targets)
+        self.log.debug('Created lmgtfy link http://lmgtfy.com/?q={0}'.format(search_terms))
+        self.bot.msg_all("http://lmgtfy.com/?q={0}".format(search_terms), targets)
         
     def close(self):
         #we do nothing
         pass
     
     def syntax(self):
-        return ''
+        return 'Helper module supports\n!help {some help terms}'
         
 if __name__ == '__main__':
     bot = CommandBot("HelpBot", "irc.segfault.net.nz", 6667)
