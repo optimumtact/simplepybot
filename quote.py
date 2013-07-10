@@ -96,8 +96,8 @@ class QuoteBot():
                 return
             
             id = result[0]
-            self.log.debug("New quote added '{0}' for {1} by {2}, it's id is {3}".format(quote, given_nick, nick, id))
-            self.bot.msg_all("Added quote successfully, it's id is {0}".format(id), targets)
+            self.log.debug("New quote added '{0}' for {1} by {2}, its id is {3}".format(quote, given_nick, nick, id))
+            self.bot.msg_all("Added quote successfully, its id is {0}".format(id), targets)
         
         except sqlite3.Error as e:
             self.db.rollback()
