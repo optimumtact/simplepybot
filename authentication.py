@@ -81,7 +81,11 @@ class IdentAuth:
             
             else:
                 self.log.warning('User auth check, but user {0} not in db'.format(nickhost))
-                return False
+                if level == 100:
+                    return True #level 100 (default) means no auth required
+                    
+                else:
+                    return False
         
         except sqlite3.Error as e:
             self.db.rollback()
