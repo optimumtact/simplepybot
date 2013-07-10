@@ -16,7 +16,7 @@ class GoogleModule():
                 bot.command(r"!help (?P<searchterms>[\w\s]+)", self.return_search_link)
                 ]
         
-        self.log = logger.getLogger('{0}.{1]'.format(bot.log_name, module_name))
+        self.log = logging.getLogger('{0}.{1]'.format(bot.log_name, module_name))
         self.events = []
         self.log.info('Finished intialising {0}'.format(module_name))
 
