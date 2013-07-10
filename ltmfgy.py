@@ -1,6 +1,6 @@
 from commandbot import *
 import sys
-import logger
+import logging
 
 class GoogleModule():
     """
