@@ -72,7 +72,7 @@ class CommandBot(IrcSocket):
 
 
     def command(self, expr, func, direct=False, can_mute=True, private=False,
-                auth_level=0):
+                auth_level=100):
         '''
         Helper function that constructs a command handler suitable for CommandBot.
 
