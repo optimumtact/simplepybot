@@ -36,7 +36,7 @@ class IrcSocket(object):
         Formatted as required by rfc 1459
         '''
         #logging.debug("Sending data: %s" % line)
-        line = line.replace('\r', '').replace('\n', '') + '\r\n'
+        line = line.replace('\r', '\r\n').replace('\n', '\r\n') + '\r\n'
         totalsent = 0
         while totalsent < len(line):
             sent = self.socket.send(line[totalsent:].encode(encoding))
