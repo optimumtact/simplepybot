@@ -258,9 +258,6 @@ class CommandBot(IrcSocket):
                             action ='COMMAND' #we set the action to command so valid commands can be identified by modules
                             break
                     
-                    except SystemExit, msg:
-                        raise SystemExit, msg
-                    
                     except Exception as e:
                         self.log.exception("Error in bot command handler")
                         self.msg_all("Unable to complete request due to internal error", args)
@@ -273,9 +270,6 @@ class CommandBot(IrcSocket):
                                 action = 'COMMAND'
                                 break
                         
-                        except SystemExit, msg:
-                            raise SystemExist, msg
-                        
                         except Exception as e:
                             self.log.exception("Error in module command handler:{0}".format(module_name))
                             self.msg_all("Unable to complete request due to internal error", args)
@@ -285,9 +279,6 @@ class CommandBot(IrcSocket):
                 try:
                     event(source, action, args, message)
                 
-                except SystemExit, msg:
-                    raise SystemExit, msg
-                
                 except Exception as e:
                     self.log.exception("Error in bot event handler")
 
@@ -296,9 +287,6 @@ class CommandBot(IrcSocket):
                 for event in module.events:
                     try:
                         event(source, action, args, message)
-                
-                    except SystemExit, msg:
-                        raise SystemExit, msg
                     
                     except Exception as e:
                         self.log.exception("Error in module event handler: {0}".format(module_name))
@@ -306,8 +294,11 @@ class CommandBot(IrcSocket):
         #clone timed events list and go through the clone
         for event in self.timed_events[:]:
             if event.should_trigger():
-                #TODO try catch block for errors
-                event.func(*event.func_args, **event.func_kwargs)
+                try:
+                    event.func(*event.func_args, **event.func_kwargs)
+                
+                except Exception as e:
+                    self.log.exception("Error in timed event handler")
 
             if event.is_expired():
                 #remove from the original list
