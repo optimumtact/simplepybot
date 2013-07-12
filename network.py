@@ -1,5 +1,6 @@
 import re
 import socket
+import errno
 #import logging
 
 class IrcSocket(object):
@@ -35,16 +36,21 @@ class IrcSocket(object):
 
         Formatted as required by rfc 1459
         '''
-        #logging.debug("Sending data: %s" % line)
-        line = line.replace('\r', '\r\n').replace('\n', '\r\n') + '\r\n'
-        totalsent = 0
-        while totalsent < len(line):
-            sent = self.socket.send(line[totalsent:].encode(encoding))
-            if sent is 0 :
-                raise RuntimeError('Socket connection broken')
-            totalsent = totalsent + sent
-        #self.socket.send(line.encode(encoding))
-
+        try:
+            self.log.debug(">> %s" % line)
+            line = line.replace('\r', '\r\n').replace('\n', '\r\n') + '\r\n'
+            totalsent = 0
+            while totalsent < len(line):
+                sent = self.socket.send(line[totalsent:].encode(encoding))
+                if sent is 0 :
+                    raise RuntimeError('Socket connection broken')
+                totalsent = totalsent + sent
+            #self.socket.send(line.encode(encoding))
+        except socket.error as e:
+            self.log.exception('Socket send failure')
+            #TODO handle this nicely
+            raise RuntimeError('Socket connection broken')
+            
     def recv(self):
         '''
         Receives data from the server.
@@ -56,6 +62,11 @@ class IrcSocket(object):
         except socket.timeout as e:
             #nothing recv, no new messages
             return []
+        
+        except socket.error as e:
+            self.log.exception('Socket read failure')
+            return ['NETWORK_MODULE_SOCKET_ERROR :{0}'.format(e)]
+            
         data = d.decode('utf-8', 'replace')
 
         '''
@@ -94,10 +105,6 @@ class IrcSocket(object):
 
         command = m.group('command')
 
-        if command == 'PING':
-            self.send('PONG %s' % postfix)
-            return None
-
         prefix = m.group('prefix')
         if prefix:
             prefix = prefix.lstrip(' ')
@@ -120,4 +127,5 @@ class IrcSocket(object):
         for line in result:
             cleaned_message = self.parse_message(line)
             if cleaned_message:
+                self.log.debug('<< {0} {1} {2} :{3}'.format(*cleaned_message))
                 yield cleaned_message

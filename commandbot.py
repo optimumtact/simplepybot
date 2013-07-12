@@ -4,7 +4,7 @@ import sys
 import re
 import sqlite3
 from datetime import datetime, timedelta
-from time import sleep
+import time
 from collections import deque
 import logging
 
@@ -18,23 +18,30 @@ class CommandBot(IrcSocket):
     A framework for adding more modules to do more complex stuff
     '''
 
-    def __init__(self, nick, network, port, max_log_len = 100, authmodule=None, db_file = 'bot.db', log_name='BotCore', log_level=logging.INFO):
-        super(CommandBot, self).__init__()
-        assert network and port and nick
-        self.modules = dict()
-        self.connect((network, port), nick, "bot@"+network, network, nick)
-        self.nick = nick
-        self.server = network
-        self.port = port
-        
+    def __init__(self, nick, network, port, max_log_len = 100, authmodule=None, db_file = 'bot.db', log_name='BotCore', log_level=logging.DEBUG):
         #set up logging stuff
         self.log_name = log_name
         self.log = logging.getLogger(self.log_name)
-        self.log.setLevel(log_level)
+        self.log.setLevel(logging.DEBUG)
         h = logging.StreamHandler()
+        h.setLevel(log_level)
         f = logging.Formatter("%(name)s %(levelname)s %(message)s")
         h.setFormatter(f)
         self.log.addHandler(h)
+        
+        #set up network stuff
+        #TODO I need to refactor this out into it's own thread
+        super(CommandBot, self).__init__()
+        assert network and port and nick
+        self.modules = dict()
+        
+        self.connect((network, port), nick, "bot@"+network, network, nick)
+        self.nick = nick
+        self.network = network
+        self.port = port
+        
+        self.times_reconnected = 0
+        
         #create a ref to the db connection
         self.db = sqlite3.connect(db_file)
         
@@ -66,6 +73,9 @@ class CommandBot(IrcSocket):
 #               self.event('441', self.change_nick),
 #               self.event('436', self.change_nick),
                 self.event('001', self.registered_event),
+                self.event('ERROR', self.reconnect),
+                self.event('NETWORK_MODULE_SOCKET_ERROR', self.reconnect),
+                self.event('PING', self.ping),
                 ]
 
         self.timed_events = []
@@ -100,9 +110,10 @@ class CommandBot(IrcSocket):
             #we have some whitespace to remove
             nickhost = nickhost.strip(' ')
             
-            #unfortunately the irc spec is not sane and when you get addressed in
-            #a privmsg you see your own name as the channel (why not theirs? who knows)
-            #so we have to change it ourselves
+            #unfortunately there is weirdness in irc and when you get addressed in
+            #a privmsg you see your own name as the channel instead of theirs
+            #It would be nice if both sides saw the other persons name
+            #I guess they weren't thinking of bots when they wrote the spec
             for i, channel in enumerate(args[:]):
                 if channel == bot.nick:
                     args[i] = nick
@@ -130,7 +141,7 @@ class CommandBot(IrcSocket):
 
             if auth_level:
                 if not bot.auth.is_allowed(nick, nickhost, auth_level):
-                    bot.msg_all('{0} is not authenticated to do that'.format(nick), args)
+                    #bot.msg_all('{0} is not authenticated to do that'.format(nick), args)
                     return True
 
             #call the function
@@ -213,10 +224,9 @@ class CommandBot(IrcSocket):
 
         Sets up the dbm instance
         '''
-        with BotDB('BOTDB') as self.storage:
-            while True:
-                self.logic()
-                sleep(.1)
+        while True:
+            self.logic()
+            time.sleep(.1)
 
     def logic(self):
         '''
@@ -238,7 +248,7 @@ class CommandBot(IrcSocket):
         for m in self.get_messages():
             was_command = False
             source, action, args, message = m
-            self.log.debug('Logic loop event {0}'.format(m))
+            #self.log.debug('Logic loop event {0}'.format(m))
 
             #if a priv message we first pass it through the command handlers
             if message and action == "PRIVMSG":
@@ -292,13 +302,11 @@ class CommandBot(IrcSocket):
             self.msg_all('No module by that name, try {0}: list modules'.format(self.nick), targets)
             
     def end(self, nick, nickhost, action, targets, message, m):
-        for module in self.modules:
-            module = self.modules[module]
-            module.close()
-
+        '''
+        End this bot, closing each module and quitting the server
+        '''
         self.quit('Goodbye for now')
-        self.db.close()
-        sys.exit()
+        self.close()
 
     def mute(self, nick, nickhost, action, targets, message, m):
         '''
@@ -310,10 +318,63 @@ class CommandBot(IrcSocket):
             message = 'Bot is now muted'
         
         else:
-            message= 'Bot is now unmuted'
+            message = 'Bot is now unmuted'
 
         self.msg_all(message, targets)
 
+    def registered_event(self, source, action, args, message):
+        '''
+        this is called when a 001 welcome message gets received
+        any actions that require you to be registered with
+        name and nick first are cached and then called when
+        this event is fired
+        '''
+        self.registered = True
+        for channel in self.channels:
+            self.join(channel)
+    
+    def reconnect(self, source, event, args, message):
+        '''
+        Handles disconnection by trying to reconnect 3 times
+        before quitting
+        '''
+        if event == 'NETWORK_MODULE_SOCKET_ERROR':
+            self.log.error('Closing bot due to fatal socket error')
+            self.close()
+            
+        self.log.error('Lost connection to server:{0}'.format(message))
+        if self.times_reconnected >= 3:
+            self.log.error('Unable to reconnect to server on third attempt')
+            self.close()
+        
+        else:
+            self.log.info('Sleeping before reconnection attempt, {0} seconds'.format(self.times_reconnected*60))
+            time.sleep(self.times_reconnected*60)
+            self.registered = False
+            self.times_reconnected += 1
+            self.log.info('Attempting reconnection, attempt no: {0}'.format(self.times_reconnected))
+            self.connect((self.network, self.port), self.nick, "bot@"+self.network, self.network, self.nick)
+    
+    def ping(self, source, action, args, message):
+        '''
+        Called on a ping, you can hook into this to get a really low resolution timer
+        Suggest you use timing events instead
+        '''
+        self.send('PONG {0}'.format(message))
+        
+    def close(self):
+        '''
+        Handle module cleanup, database cleanup and ending script
+        '''
+        self.log.info("Shutting down bot")
+        for module in self.modules:
+            module = self.modules[module]
+            module.close()
+        
+        self.db.close()
+        sys.exit()
+
+    #Everything below this point is just convienience methods for IRC
     def msgs_all(self, msgs, channels):
         """
         Accepts a list of messages to send to a list of channels
@@ -352,19 +413,7 @@ class CommandBot(IrcSocket):
             self.send('JOIN ' + channel)
 
         else:
-            self.channels.append(channel)
-
-    def registered_event(self, source, action, args, message):
-        '''
-        this is called when a 001 welcome message gets received
-        any actions that require you to be registered with
-        name and nick first are cached and then called when
-        this event is fired
-        '''
-        self.registered = True
-        for channel in self.channels:
-            self.join(channel)
-
+            self.channels.append(channel)        
     def quit(self, message):
         '''
         Disconnects from a server with a given QUIT message.
@@ -382,29 +431,6 @@ class CommandBot(IrcSocket):
             self.msg(message, channel)
         self.send('PART ' + channel)
 
-
-class BotDB:
-    """
-    Trivial wrapper class over shelve to enable use in with statements.
-    """
-    def __init__(self, name):
-        """
-        Store the given name to use for this Database
-        """
-        self.name = name
-
-    def __enter__(self):
-        """
-        Set up the internal db with the right settings
-        """
-        self._internal = shelve.open(self.name, 'c')
-        return self._internal
-
-    def __exit__(self, type, value, traceback):
-        """
-        On exit we simply close internal db instance
-        """
-        self._internal.close()
 
 class TimedEvent():
     '''
