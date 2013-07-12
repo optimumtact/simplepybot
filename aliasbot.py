@@ -9,7 +9,7 @@ class AliasBot():
     the framework
     Contains a simple easter egg - HONK.
     '''
-    def __init__(self, bot, module_name ='Alias', log_level = logging.INFO):
+    def __init__(self, bot, module_name ='Alias', log_level = logging.DEBUG):
         #set up logging
         self.log = logging.getLogger(bot.log_name+'.'+module_name)
         self.log.setLevel(log_level)
@@ -53,7 +53,6 @@ class AliasBot():
         '''
         Honk at anyone that highlighted us.
         '''
-        self.log.debug('Honking at users on channels {0}'.format(targets))
         self.bot.msg_all(self.alternate_honk(), targets)
 
     def learn(self, nick, nickhost, action, targets, message, m):
@@ -62,10 +61,11 @@ class AliasBot():
         '''
         abbr = m.group('abbr')
         long = m.group('long')
+        self.log.debug("Remembering {0} as {1}".format(abbr, long))
+        
         try:
             self.db.execute('INSERT OR REPLACE INTO alias_module VALUES (?, ?)', [abbr, long])
             self.db.commit()
-            self.log.info('Remembering {0} as {1}'.format(abbr, long))
             self.bot.msg_all('Remembering {0} as {1}'.format(abbr, long), targets)
         
         except sqlite3.Error as e:
@@ -79,15 +79,14 @@ class AliasBot():
         Forget about an abbreviation.
         '''
         abbr = m.group('abbr')
+        self.log.debug("Forgetting {0}".format(abbr))
         try:        
             if self.does_exist(abbr):
                 self.db.execute('DELETE FROM alias_module WHERE short = ?', [abbr])
                 self.db.commit()
-                self.log.info('Successfully deleted {0} from database'.format(abbr))
                 self.bot.msg_all('Successfully deleted {0} from database'.format(abbr), targets)
             
             else:
-                self.log.warning('Abbr {0} does not exist'.format(abbr))
                 self.bot.msg_all('{0} is not in the database'.format(abbr), targets)
             
         except sqlite3.Error as e:
@@ -99,16 +98,14 @@ class AliasBot():
         Retrieves a long version of an abbrievated nick
         '''
         abbr = m.group('abbr')
-        
+        self.log.debug("Retrieving {0}".format(abbr))
         try:
             result = self.db.execute('SELECT long FROM alias_module WHERE short = ?', [abbr]).fetchone()
             if result:
                 result = result[0]
-                self.log.info('Retrieved {1} for {0}'.format(abbr, result))
                 self.bot.msg_all(str(result), targets)
             
             else:
-                self.log.warning('No result found for abbrievation {0}'.format(abbr))
                 self.bot.msg_all('No result for abbrievation {0}'.format(abbr), targets)
         
         except sqlite3.Error as e:
@@ -123,11 +120,9 @@ class AliasBot():
         try:
             results = self.db.execute('SELECT * FROM alias_module').fetchall()
             if results:
-                self.log.info('Returning stored abbrievations, there are {0} abbrievations stored'.format(len(results)))
                 self.bot.msg_all(",".join(map(str, results)), targets)
             
             else:
-                self.log.debug('No stored abbrievations to return')
                 self.bot.msg_all('No stored abbrievations yet', targets)
          
         except sqlite3.Error as e:
@@ -139,16 +134,19 @@ class AliasBot():
         Returns true if the item with abbr exist in the database
         If it does not it returns false
         '''
+        self.log.debug("Testing if {0} exists".format(abbr))
         try:
             result = self.db.execute('SELECT * FROM alias_module WHERE short = ?', [abbr]).fetchone()
             if result:
+                self.log.debug("It Does")
                 return True
                 
             else:
+                self.log.debug("It doesn't")
                 return False
         
         except sqlite3.Error as e:
-            self.log.error('Could not verify {0} exists'.format(abbr))
+            self.log.exception('Could not verify {0} exists'.format(abbr))
             return False
     
     def syntax(self):
@@ -159,6 +157,7 @@ class AliasBot():
                 !forget {x}
                 !list_abbr
                 '''
+                
     def close(self):
         #we don't do anything special
         pass

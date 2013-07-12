@@ -16,7 +16,7 @@ class QuoteBot():
 
     """
     nick = "quotebot"
-    def __init__(self, bot, module_name='Quotes', log_level = logging.INFO):
+    def __init__(self, bot, module_name='Quotes', log_level = logging.DEBUG):
         self.commands = [
                 bot.command(r"!quote (?P<id>\d+) *$", self.quote_by_id),
                 bot.command(r"!quotes for (?P<nick>\S+)", self.quotes_for_name, private=True),
@@ -28,7 +28,7 @@ class QuoteBot():
         
         self.module_name = module_name
         self.bot = bot
-        self.log = logging.getLogger(bot.log_name+'.'+module_name)
+        self.log = logging.getLogger("{0}.{1}".format(bot.log_name, module_name))
         self.log.setLevel(log_level)
         bot.add_module(module_name, self)
         self.module_name = module_name
@@ -45,15 +45,13 @@ class QuoteBot():
         Find a quote with the given id
         '''
         id = int(m.group('id'))
-        
+        self.log.debug("Finding quote with id {0}".format(id))
         try:
             result = self.db.execute('SELECT * FROM {0} WHERE id=?'.format(self.module_name), [id]).fetchone()
             if result:
-                self.log.debug('Found quote {0} for id {1}'.format(result[1], id))
                 self.bot.msg_all(result[1], targets)
             
             else:
-                self.log.debug('No quote with id:{0}'.format(id))
                 self.bot.msg_all('No quote with that id'.format(id), targets)
          
         except sqlite3.Error as e:
@@ -65,15 +63,14 @@ class QuoteBot():
         Find all quotes with given nick
         '''
         given_nick = m.group('nick')
+        self.log.debug("Finding all quotes by nick {0}".format(given_nick))
         try:
             result = self.db.execute('SELECT * FROM {0} WHERE nick = ?'.format(self.module_name), [given_nick]).fetchall()
             if result:
                 result = ",".join(map(self.print_result, result))
-                self.log.debug("Request for all quotes of user {0} : {1}".format(given_nick, result))
                 self.bot.msg_all(result, targets)
             
             else:
-                self.log.debug('User {0} has no quotes in quote database'.format(given_nick))
                 self.bot.msg_all('User {0} has no quotes in quote database'.format(given_nick), targets)
         
         except sqlite3.Error as e:
@@ -86,6 +83,7 @@ class QuoteBot():
         '''
         given_nick = m.group('nick')
         quote = m.group('quote')
+        self.log.debug("Adding quote by {0}, {1}".format(given_nick, quote))
         try:
             self.db.execute('INSERT INTO {0} (quote, nick) VALUES (?, ?)'.format(self.module_name), [quote, given_nick])
             self.db.commit()
@@ -96,7 +94,6 @@ class QuoteBot():
                 return
             
             id = result[0]
-            self.log.debug("New quote added '{0}' for {1} by {2}, its id is {3}".format(quote, given_nick, nick, id))
             self.bot.msg_all("Added quote successfully, its id is {0}".format(id), targets)
         
         except sqlite3.Error as e:

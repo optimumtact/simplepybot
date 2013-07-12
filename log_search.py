@@ -1,5 +1,6 @@
 from commandbot import *
 import datetime
+import logging
 
 class LogModule():
     '''
@@ -8,7 +9,7 @@ class LogModule():
     the frameworks logging features
     '''
 
-    def __init__(self, bot, module_name = "Logging"):
+    def __init__(self, bot, module_name = "Logging", log_level = logging.DEBUG):
         self.commands = [
                 bot.command(r"^!find all (?P<match>[\w| ]+) by (?P<name>\w+)", self.harvest_many_by_name),
                 bot.command(r"^!find all (?P<match>[\w| ]+)", self.harvest_many),
@@ -18,11 +19,14 @@ class LogModule():
         self.events = [
                 bot.event('PRIVMSG', self.log_message)
                 ]
-
+        
+        self.log = logging.getLogger("{0}.{1}".format(bot.log_name, module_name))
+        self.log.setLevel(log_level)
         self.module_name = module_name
         self.bot = bot
         self.bot.add_module(module_name, self)
         self.logs = []
+        self.log.info("Finished initialising {0}".format(module_name))
 
     
     def harvest_many_by_name(self, nick, nickhost, action, targets, message, m):
@@ -30,6 +34,7 @@ class LogModule():
         Sarch the logs for every item that has m.group("match") as a substring
         and was said by nick m.group("name")
         '''
+        self.log.debug("Looking for many messages matching {0} by name {1}".format(m.group("match"), m.group("name")))
         messages = []
         results = self.search_logs(m.group("match"), name=m.group("name"))
         if results:
@@ -47,9 +52,11 @@ class LogModule():
         '''
         messages = []
         results = self.search_logs(m.group("match"))
+        self.log.debug("Looking for many messages matching {0}".format(m.group("match")))
         if results:
             for result in results:
                 messages.append(str(result))
+            
             self.bot.msg_all(', '.join(messages), targets)
 
         else:
@@ -64,9 +71,11 @@ class LogModule():
         direction = m.group("direction")
         match = m.group("match")
         if direction == "last":
+            self.log.debug("Finding last message matching {0}".format(match))
             results = self.search_logs(match, reverse=True)
         
         else:
+            self.log.debug("Finding first message matching {0}".format(match))
             results = self.search_logs(match)
         
         if results:
@@ -89,6 +98,7 @@ class LogModule():
         """
         nick, nickhost = source.split('!')
         #store as a new log entry!
+        self.log.debug("Message logged")
         self.logs.append(LogEntry(nick, nickhost, message, args))
 
     def search_logs(self, string, reverse = False, name = None):

@@ -18,17 +18,16 @@ class CommandBot(IrcSocket):
     A framework for adding more modules to do more complex stuff
     '''
 
-    def __init__(self, nick, network, port, max_log_len = 100, authmodule=None, db_file = 'bot.db', log_name='BotCore', log_level=logging.DEBUG):
+    def __init__(self, nick, network, port, max_log_len = 100, authmodule=None, db_file = 'bot.db', log_name='BotCore', log_level=logging.DEBUG, log_handlers = None):
         #set up logging stuff
         self.log_name = log_name
         self.log = logging.getLogger(self.log_name)
-        self.log.setLevel(logging.DEBUG)
-        h = logging.StreamHandler()
-        h.setLevel(log_level)
-        f = logging.Formatter("%(name)s %(levelname)s %(message)s")
-        h.setFormatter(f)
-        self.log.addHandler(h)
-        
+        self.log.setLevel(log_level)
+        #if more handlers were given we need to add them
+        if log_handlers:
+            for handler in log_handlers:
+                self.log.addHandler(handler)
+                
         #set up network stuff
         #TODO I need to refactor this out into it's own thread
         super(CommandBot, self).__init__()
@@ -404,7 +403,7 @@ class CommandBot(IrcSocket):
                 module.close()
             
             except Exception as e:
-                self.log.exception("Error in closing module {0}".format(module_name)
+                self.log.exception("Error in closing module {0}".format(module_name))
                 
         
         self.db.close()

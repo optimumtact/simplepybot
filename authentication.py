@@ -3,7 +3,7 @@ import traceback as tb
 import logging
 
 class IdentAuth:
-    def __init__(self, bot, module_name='IdentAuth', log_level = logging.INFO):
+    def __init__(self, bot, module_name='IdentAuth', log_level = logging.DEBUG):
         self.bot = bot
         self.log = logging.getLogger(bot.log_name+'.'+module_name)
         self.log.setLevel(log_level)

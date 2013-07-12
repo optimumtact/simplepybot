@@ -9,7 +9,7 @@ class GoogleModule():
     to sarcastically answer peoples questions
     """
 
-    def __init__(self, bot, module_name='Helper'):
+    def __init__(self, bot, module_name='Helper', log_level = logging.DEBUG):
         self.bot = bot
         bot.add_module(module_name, self)
         self.commands = [
@@ -17,12 +17,13 @@ class GoogleModule():
                 ]
         
         self.log = logging.getLogger('{0}.{1}'.format(bot.log_name, module_name))
+        self.log.setLevel(log_level)
         self.events = []
         self.log.info('Finished intialising {0}'.format(module_name))
 
     def return_search_link(self, nick, nickhost, action, targets, message, m):
+        self.log.debug("Making a lmgtfy link for {0}".format(m.group("searchterms")))
         search_terms = m.group("searchterms").replace(" ", "+")
-        self.log.debug('Created lmgtfy link http://lmgtfy.com/?q={0}'.format(search_terms))
         self.bot.msg_all("http://lmgtfy.com/?q={0}".format(search_terms), targets)
         
     def close(self):
