@@ -221,8 +221,8 @@ class CommandBot(IrcSocket):
         Primary loop.
 
         You'll need to transfer control to this function before execution begins.
-
-        Sets up the dbm instance
+        This is provided so you can hook in at the loop level and change things here
+        in a subclass
         '''
         while True:
             self.logic()
@@ -252,28 +252,56 @@ class CommandBot(IrcSocket):
 
             #if a priv message we first pass it through the command handlers
             if message and action == "PRIVMSG":
-                #TODO try catch block for errors
                 for command in self.commands:
-                    if command(source, action, args, message):
-                        action ='COMMAND' #we set the action to command so valid commands can be identified by modules
-                        break
-
-                for module in self.modules:
-                    module = self.modules[module]
-                    for command in module.commands:
+                    try:
                         if command(source, action, args, message):
-                            action = 'COMMAND'
+                            action ='COMMAND' #we set the action to command so valid commands can be identified by modules
                             break
+                    
+                    except SystemExit, msg:
+                        raise SystemExit, msg
+                    
+                    except Exception as e:
+                        self.log.exception("Error in bot command handler")
+                        self.msg_all("Unable to complete request due to internal error", args)
+                        
+                for module_name in self.modules:
+                    module = self.modules[module_name]
+                    for command in module.commands:
+                        try:
+                            if command(source, action, args, message):
+                                action = 'COMMAND'
+                                break
+                        
+                        except SystemExit, msg:
+                            raise SystemExist, msg
+                        
+                        except Exception as e:
+                            self.log.exception("Error in module command handler:{0}".format(module_name))
+                            self.msg_all("Unable to complete request due to internal error", args)
 
             #check it against the event commands
-            #TODO try catch blocks for errors
             for event in self.events:
-                event(source, action, args, message)
-
-            for module in self.modules:
-                module = self.modules[module]
-                for event in module.events:
+                try:
                     event(source, action, args, message)
+                
+                except SystemExit, msg:
+                    raise SystemExit, msg
+                
+                except Exception as e:
+                    self.log.exception("Error in bot event handler")
+
+            for module_name in self.modules:
+                module = self.modules[module_name]
+                for event in module.events:
+                    try:
+                        event(source, action, args, message)
+                
+                    except SystemExit, msg:
+                        raise SystemExit, msg
+                    
+                    except Exception as e:
+                        self.log.exception("Error in module event handler: {0}".format(module_name))
 
         #clone timed events list and go through the clone
         for event in self.timed_events[:]:
