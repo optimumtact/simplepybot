@@ -81,7 +81,14 @@ class ReminderModule():
         pass
 
 if __name__ == '__main__':
-    bot = CommandBot('TimeTester', 'irc.segfault.net.nz', 6667)
+    #basic stream handler
+    h = logging.StreamHandler()
+    h.setLevel(logging.DEBUG)
+    #format to use
+    f = logging.Formatter("%(name)s %(levelname)s %(message)s")
+    h.setFormatter(f)
+    file_handler.setFormatter(f)
+    bot = CommandBot('TimeTester', 'irc.segfault.net.nz', 6667, log_handlers=[h])
     bot.join('#bots')
     ReminderModule(bot)
     bot.loop()

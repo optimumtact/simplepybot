@@ -34,7 +34,14 @@ class GoogleModule():
         return 'Helper module supports\n!help {some help terms}'
         
 if __name__ == '__main__':
-    bot = CommandBot("HelpBot", "irc.segfault.net.nz", 6667)
+    #basic stream handler
+    h = logging.StreamHandler()
+    h.setLevel(logging.DEBUG)
+    #format to use
+    f = logging.Formatter("%(name)s %(levelname)s %(message)s")
+    h.setFormatter(f)
+    file_handler.setFormatter(f)
+    bot = CommandBot("HelpBot", "irc.segfault.net.nz", 6667, log_handlers=[h])
     gb = GoogleModule(bot)
     bot.join('#bots')
     bot.loop()

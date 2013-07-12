@@ -158,7 +158,14 @@ class LogEntry:
         return "nick:{0}, nickhost:{4} message:{1}, channel:{2}, timestamp{3}".format(self.nick, self.message, self.channel, self.timestamp, self.nickhost)
 
 if __name__ == '__main__':
-    bot = CommandBot('LumberJack', 'irc.segfault.net.nz', 6667)
+    #basic stream handler
+    h = logging.StreamHandler()
+    h.setLevel(logging.DEBUG)
+    #format to use
+    f = logging.Formatter("%(name)s %(levelname)s %(message)s")
+    h.setFormatter(f)
+    file_handler.setFormatter(f)
+    bot = CommandBot('LumberJack', 'irc.segfault.net.nz', 6667, log_handlers=[h])
     LogModule(bot)
     bot.join('#bots')
     bot.loop()
