@@ -109,7 +109,8 @@ class CommandBot(IrcSocket):
         def process(source, action, args, message):
             #grab nick and nick host
             nick, nickhost = source.split('!')
-            #we have some whitespace to remove
+            #there is some left over space from processing in network module
+            #TODO: this should be done over there, not here
             nickhost = nickhost.strip(' ')
             
             #unfortunately there is weirdness in irc and when you get addressed in
@@ -120,7 +121,7 @@ class CommandBot(IrcSocket):
                 if channel == bot.nick:
                     args[i] = nick
                     
-            #make sure this message was directly addressed
+            #make sure this message was prefixed with our bot's username
             if direct:
                 if not message.startswith(bot.nick):
                     return False
@@ -128,6 +129,7 @@ class CommandBot(IrcSocket):
                 #strip nick from message
                 message = message[len(bot.nick):]
                 #strip away any syntax left over from addressing
+                #this may or may not be there
                 message = message.lstrip(': ')
             
             #If muted, or message private, send it to user not channel
@@ -136,7 +138,8 @@ class CommandBot(IrcSocket):
                 args = [nick]
             
 
-            #check it matches our command regex
+            #check it matches regex and grab the matcher object so the function can
+            #pull stuff out of it
             m = guard.match(message)
             if not m:
                 return False
@@ -157,6 +160,8 @@ class CommandBot(IrcSocket):
         Helper function that constructs an event handler suitable for CommandBot.
         These are intended to capture events from IRC servers, such as the 001 event 
         you receive for correctly registering, or errors such as nick in use
+        
+        They also provide access to PRIVMSG's with a much lower level of manipulation
         '''
         event_id = event_id
         def process(source, action, args, message):
@@ -348,8 +353,10 @@ class CommandBot(IrcSocket):
         this is called when a 001 welcome message gets received
         any actions that require you to be registered with
         name and nick first are cached and then called when
-        this event is fired
+        this event is fired, for example, joining channels
         '''
+        #TODO: what else do we need to extend this too?
+        #messages/privmsgs
         self.registered = True
         for channel in self.channels:
             self.join(channel)
@@ -379,8 +386,9 @@ class CommandBot(IrcSocket):
     
     def ping(self, source, action, args, message):
         '''
-        Called on a ping, you can hook into this to get a really low resolution timer
-        Suggest you use timing events instead
+        Called on a ping and responds with a PONG
+        Module authors can also hook the PING event for a low resolution timer
+        if you didn't want to use the timed events system for some reason
         '''
         self.send('PONG {0}'.format(message))
         
@@ -389,9 +397,15 @@ class CommandBot(IrcSocket):
         Handle module cleanup, database cleanup and ending script
         '''
         self.log.info("Shutting down bot")
-        for module in self.modules:
-            module = self.modules[module]
-            module.close()
+        for module_name in self.modules:
+            module = self.modules[module_name]
+            
+            try:
+                module.close()
+            
+            except Exception as e:
+                self.log.exception("Error in closing module {0}".format(module_name)
+                
         
         self.db.close()
         sys.exit()
@@ -428,14 +442,13 @@ class CommandBot(IrcSocket):
         '''
         Join a channel.
         channel: the channel to join
-        The channel should contain one or more # symbols as needed.
-
         '''
         if self.registered:
             self.send('JOIN ' + channel)
 
         else:
-            self.channels.append(channel)        
+            self.channels.append(channel)
+
     def quit(self, message):
         '''
         Disconnects from a server with a given QUIT message.
