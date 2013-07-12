@@ -65,7 +65,7 @@ class IrcSocket(object):
         
         except socket.error as e:
             self.log.exception('Socket read failure')
-            return ['NETWORK_MODULE_SOCKET_ERROR :{0}'.format(e)]
+            return ['ERROR :{0}'.format(e)]
             
         data = d.decode('utf-8', 'replace')
 

@@ -40,7 +40,9 @@ class CommandBot(IrcSocket):
         self.network = network
         self.port = port
         
-        self.times_reconnected = 0
+        #TODO a lot of these need to be made into config options
+        self.max_reconnects = 4#really is 3
+        self.times_reconnected = 1 #starts at 1, goes to 4, see, it really is 3!
         
         #create a ref to the db connection
         self.db = sqlite3.connect(db_file)
@@ -74,7 +76,7 @@ class CommandBot(IrcSocket):
 #               self.event('436', self.change_nick),
                 self.event('001', self.registered_event),
                 self.event('ERROR', self.reconnect),
-                self.event('NETWORK_MODULE_SOCKET_ERROR', self.reconnect),
+                self.event('KILL', self.reconnect),
                 self.event('PING', self.ping),
                 ]
 
@@ -357,12 +359,13 @@ class CommandBot(IrcSocket):
         Handles disconnection by trying to reconnect 3 times
         before quitting
         '''
-        if event == 'NETWORK_MODULE_SOCKET_ERROR':
-            self.log.error('Closing bot due to fatal socket error')
+        #if we have been kicked, don't attempt a reconnect
+        if  event == 'KILL':
+            self.log.error('No reconnection attempt due to being killed')
             self.close()
             
         self.log.error('Lost connection to server:{0}'.format(message))
-        if self.times_reconnected >= 3:
+        if self.times_reconnected >= self.max_reconnects:
             self.log.error('Unable to reconnect to server on third attempt')
             self.close()
         
@@ -370,8 +373,8 @@ class CommandBot(IrcSocket):
             self.log.info('Sleeping before reconnection attempt, {0} seconds'.format(self.times_reconnected*60))
             time.sleep(self.times_reconnected*60)
             self.registered = False
-            self.times_reconnected += 1
             self.log.info('Attempting reconnection, attempt no: {0}'.format(self.times_reconnected))
+            self.times_reconnected += 1
             self.connect((self.network, self.port), self.nick, "bot@"+self.network, self.network, self.nick)
     
     def ping(self, source, action, args, message):
