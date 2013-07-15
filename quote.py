@@ -22,6 +22,7 @@ class QuoteBot():
                 bot.command(r"!quotes for (?P<nick>\S+)", self.quotes_for_name, private=True),
                 bot.command(r"^!quote (?P<quote>.+) by (?P<nick>\S+)", self.add_quote),
                 bot.command(r"^!quote (?:\d{2}:\d{2} )?<.?(?P<nick>\S+)> +(?P<quote>.+)", self.add_quote),
+                bot.command(r"^!quotedel (?P<id>\d+)$", self.delete_quote, auth_level=30),
                 ]
         self.events = []
         self.db = bot.db
@@ -49,7 +50,7 @@ class QuoteBot():
         try:
             result = self.db.execute('SELECT * FROM {0} WHERE id=?'.format(self.module_name), [id]).fetchone()
             if result:
-                self.bot.msg_all(result[1], targets)
+                self.bot.msg_all("<{0}> {1}".format(result[1], result[2]), targets)
             
             else:
                 self.bot.msg_all('No quote with that id'.format(id), targets)
@@ -100,7 +101,27 @@ class QuoteBot():
             self.db.rollback()
             self.log.exception("Unable to add quote '{0}' for nick {1}, requested by {2}".format(quote, given_nick, nick))
             self.bot.msg_all('Unable to add quote due to database error', targets)
- 
+    
+    def delete_quote(self, nick, nickhost, action, targets, message, m):
+        '''
+        Remove quote with given id
+        '''
+        id = int(m.group('id'))
+        try:
+            result = self.db.execute('SELECT * FROM {0} WHERE id = ?'.format(self.module_name), [id]).fetchone()
+            if not result:
+                self.log.debug('No quote with id {0} to delete'.format(id))
+                self.bot.msg_all("There is no quote with that id", targets)
+            else:
+                self.db.execute('DELETE FROM {0} WHERE id = ?'.format(self.module_name), [id])
+                self.db.commit()
+                self.bot.msg_all('Quote deleted', targets)
+                
+        except sqlite3.Error as e:
+            self.db.rollback()
+            self.log.exception("Unable to delete quote with id {0}".format(id))
+            self.bot.msg_all("Unable to delete quote due to database error", targets)
+            
     def print_result(self, result):
         return '\"{0}\" -{1}'.format(result[1], result[0])
     
@@ -110,7 +131,7 @@ class QuoteBot():
                !quotes for {user}
                !quote with id {some id}
                !quote {some string quote} by {some nick}
-               !quote 16:40 < {somenick}> definitely time for a syntax command
+               !quote 16:40 <{nick}> definitely time for a syntax command
                '''
 
     def close(self):
@@ -125,7 +146,6 @@ if __name__ == '__main__':
     #format to use
     f = logging.Formatter("%(name)s %(levelname)s %(message)s")
     h.setFormatter(f)
-    file_handler.setFormatter(f)
     bot = CommandBot('quotebot', 'irc.segfault.net.nz', 6667, log_handlers=[h])
     #add the quote module
     mod = QuoteBot(bot, log_level = logging.DEBUG)
