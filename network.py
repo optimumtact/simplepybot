@@ -27,8 +27,8 @@ class IrcSocket(object):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.connect(address)
         self.socket.settimeout(0.1)
-        self.send('NICK %s' % nick)
-        self.send('USER %s %s %s :%s' % (nick, ident, server, realname))
+        self.send(u'NICK %s' % nick)
+        self.send(u'USER %s %s %s :%s' % (nick, ident, server, realname))
 
     def send(self, line, encoding="utf-8"):
         '''
@@ -65,7 +65,7 @@ class IrcSocket(object):
         
         except socket.error as e:
             self.log.exception('Socket read failure')
-            return ['ERROR :{0}'.format(e)]
+            return [u'ERROR :{0}'.format(e)]
             
         data = d.decode('utf-8', 'replace')
 
@@ -95,7 +95,7 @@ class IrcSocket(object):
         #logging.debug(message)
         m = self.ircmsg.match(message)
         if not m:
-            logging.warn('Couldn\'t match message {0}'.format(message))
+            logging.warn(u'Couldn\'t match message {0}'.format(message))
             return None
 
         postfix = m.group('postfix')
@@ -127,5 +127,5 @@ class IrcSocket(object):
         for line in result:
             cleaned_message = self.parse_message(line)
             if cleaned_message:
-                self.log.debug('<< {0} {1} {2} :{3}'.format(*cleaned_message))
+                self.log.debug(u'<< {0} {1} {2} :{3}'.format(*cleaned_message))
                 yield cleaned_message
