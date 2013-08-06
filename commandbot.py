@@ -61,7 +61,7 @@ class CommandBot(IrcSocket):
         self.is_mute = False
 
         self.commands = [
-                self.command(r'syntax (?P<module>\S+)', self.syntax, direct=True),
+                self.command(r'help', self.syntax, direct=True, private=True),
                 self.command('list modules', self.list_modules, direct=True),
                 self.command('quit', self.end, direct=True, auth_level=20),
                 self.command('mute', self.mute, direct=True, can_mute=False,
@@ -320,12 +320,13 @@ class CommandBot(IrcSocket):
         self.msg_all(', '.join(self.modules.keys()), targets)
     
     def syntax (self, nick, nickhost, action, targets, message, m):
-        module = m.group('module')
-        if module in self.modules:
-            self.msg_all(self.modules[module].syntax(), targets)
-        
-        else:
-            self.msg_all(u'No module by that name, try {0}: list modules'.format(self.nick), targets)
+        for module in self.modules:
+            syntax  = self.modules[module].syntax().split("\n")
+            r = []
+            for s in syntax:
+                s = s.lstrip(" ")
+                r.append(s)
+            self.msgs_all(r, targets)
             
     def end(self, nick, nickhost, action, targets, message, m):
         '''

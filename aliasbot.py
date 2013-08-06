@@ -17,9 +17,9 @@ class AliasBot:
         
         self.commands = [
                 bot.command(r"^\w*", self.honk, direct=True),
-                bot.command(r"^!learn (?P<abbr>\S+) as (?P<long>\S.*)$", self.learn, auth_level = 20),
+                bot.command(r"^!learn (?P<abbr>\S+) as (?P<long>\w\s+)$", self.learn, auth_level = 20),
                 bot.command(r"^!forget (?P<abbr>\S+)", self.forget, auth_level = 20),
-                bot.command(r"^!list_abbr$", self.list_abbrievations, auth_level = 20),
+                bot.command(r"^!list_abbr$", self.list_abbrievations, private=True),
                 bot.command(r"^!(?P<abbr>\S+)$", self.retrieve)
                 ]
         
@@ -152,7 +152,13 @@ class AliasBot:
             return False
     
     def syntax(self):
-        return  u"Alias supports !learn {x} as {y}\n!{x}\n!forget {x}\n!list_abbr"
+        return  '''
+                Alias module supports
+                !learn {x} as {y}
+                !{x}
+                !forget {x}
+                !list_abbr
+                '''
                 
                 
     def close(self):
@@ -169,7 +175,7 @@ if __name__ == '__main__':
     f_h= handlers.TimedRotatingFileHandler("bot.log", when="midnight")
     f_h.setFormatter(f)
     f_h.setLevel(logging.DEBUG)
-    bot = CommandBot('arsenic2', 'irc.freenode.net', 6667, log_handlers=[h, f_h])
+    bot = CommandBot('arsenic2', 'irc.segfault.net.nz', 6667, log_handlers=[h, f_h])
     mod = AliasBot(bot)
-    bot.join('#tox')
+    bot.join('#bots')
     bot.loop()
