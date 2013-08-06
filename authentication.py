@@ -1,5 +1,4 @@
 import sqlite3
-import traceback as tb
 import logging
 
 class IdentAuth:
@@ -89,7 +88,7 @@ class IdentAuth:
         
         except sqlite3.Error as e:
             self.db.rollback()
-            log.exception('Unable to check users auth')
+            self.log.exception('Unable to check users auth')
             return 'Unable to check users auth due to database error'
     
     def is_user(self, nickhost):
@@ -110,7 +109,7 @@ class IdentAuth:
                 return "Unable to update user {0} as it doesn't exist in the database".format(nickhost)
             
             else:
-                result = self.db.execute('''UPDATE OR ABORT auth SET level=? WHERE name=?''', [level, nickhost]).fetchall()
+                self.db.execute('''UPDATE OR ABORT auth SET level=? WHERE name=?''', [level, nickhost])
                 self.db.commit()
                 self.log.info('Successfully updated user {0}, with level {1}'.format(nickhost, level))
                 return 'Successfully updated user {0}'.format(nickhost)

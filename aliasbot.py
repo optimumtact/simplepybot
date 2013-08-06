@@ -1,8 +1,9 @@
 from commandbot import *
 import sys
+import logging
+import logging.handlers as handlers
 
-
-class AliasBot():
+class AliasBot:
     '''
     An IRC Bot that can store, retrieve, and delete items.
     This bot stands as the simplest example of how to use
@@ -16,9 +17,9 @@ class AliasBot():
         
         self.commands = [
                 bot.command(r"^\w*", self.honk, direct=True),
-                bot.command(r"^!learn (?P<abbr>\S+) as (?P<long>\S.*)$", self.learn),
-                bot.command(r"^!forget (?P<abbr>\S+)", self.forget),
-                bot.command(r"^!list_abbr$", self.list_abbrievations),
+                bot.command(r"^!learn (?P<abbr>\S+) as (?P<long>\S.*)$", self.learn, auth_level = 20),
+                bot.command(r"^!forget (?P<abbr>\S+)", self.forget, auth_level = 20),
+                bot.command(r"^!list_abbr$", self.list_abbrievations, auth_level = 20),
                 bot.command(r"^!(?P<abbr>\S+)$", self.retrieve)
                 ]
         
@@ -40,7 +41,7 @@ class AliasBot():
         
       
         
-        self.log.info('Finished intialising {0}'.format(module_name))
+        self.log.info(u'Finished intialising {0}'.format(module_name))
         
     def alternate_honk(self):
         '''
@@ -61,17 +62,17 @@ class AliasBot():
         '''
         abbr = m.group('abbr')
         long = m.group('long')
-        self.log.debug("Remembering {0} as {1}".format(abbr, long))
+        self.log.debug(u"Remembering {0} as {1}".format(abbr, long))
         
         try:
             self.db.execute('INSERT OR REPLACE INTO alias_module VALUES (?, ?)', [abbr, long])
             self.db.commit()
-            self.bot.msg_all('Remembering {0} as {1}'.format(abbr, long), targets)
+            self.bot.msg_all(u'Remembering {0} as {1}'.format(abbr, long), targets)
         
         except sqlite3.Error as e:
-            self.log.exception('Could not change/add {0} as {1}'.format(abbr, long))
+            self.log.exception(u'Could not change/add {0} as {1}'.format(abbr, long))
             self.db.rollback()
-            self.bot.msg_all('Could not change/add {0} as {1}'.format(abbr, long), targets)
+            self.bot.msg_all(u'Could not change/add {0} as {1}'.format(abbr, long), targets)
             
             
     def forget(self, nick, nickhost, action, targets, message, m):
@@ -79,26 +80,26 @@ class AliasBot():
         Forget about an abbreviation.
         '''
         abbr = m.group('abbr')
-        self.log.debug("Forgetting {0}".format(abbr))
+        self.log.debug(u"Forgetting {0}".format(abbr))
         try:        
             if self.does_exist(abbr):
                 self.db.execute('DELETE FROM alias_module WHERE short = ?', [abbr])
                 self.db.commit()
-                self.bot.msg_all('Successfully deleted {0} from database'.format(abbr), targets)
+                self.bot.msg_all(u'Successfully deleted {0} from database'.format(abbr), targets)
             
             else:
-                self.bot.msg_all('{0} is not in the database'.format(abbr), targets)
+                self.bot.msg_all(u'{0} is not in the database'.format(abbr), targets)
             
         except sqlite3.Error as e:
-            self.log.exception('Unable to delete {0}'.format(abbr))
-            self.bot.msg_all('Unable to delete {0}'.format(abbr), targets)
+            self.log.exception(u'Unable to delete {0}'.format(abbr))
+            self.bot.msg_all(u'Unable to delete {0}'.format(abbr), targets)
             
     def retrieve(self, nick, nickhost, action, targets, message, m):
         '''
         Retrieves a long version of an abbrievated nick
         '''
         abbr = m.group('abbr')
-        self.log.debug("Retrieving {0}".format(abbr))
+        self.log.debug(u"Retrieving {0}".format(abbr))
         try:
             result = self.db.execute('SELECT long FROM alias_module WHERE short = ?', [abbr]).fetchone()
             if result:
@@ -106,11 +107,12 @@ class AliasBot():
                 self.bot.msg_all(str(result), targets)
             
             else:
-                self.bot.msg_all('No result for abbrievation {0}'.format(abbr), targets)
+                pass
+                #self.bot.msg_all('No result for abbrievation {0}'.format(abbr), targets)
         
         except sqlite3.Error as e:
-            self.log.exception("Unable to retrieve {0}".format(abbr))
-            self.bot.msg_all('Unable to retrieve {0}'.format(abbr), targets)
+            self.log.exception(u"Unable to retrieve {0}".format(abbr))
+            self.bot.msg_all(u'Unable to retrieve {0}'.format(abbr), targets)
         
 
     def list_abbrievations(self, nick, nickhost, action, targets, message, m):
@@ -120,43 +122,38 @@ class AliasBot():
         try:
             results = self.db.execute('SELECT * FROM alias_module').fetchall()
             if results:
-                self.bot.msg_all(",".join(map(str, results)), targets)
+                self.bot.msg_all(u",".join(map(str, results)), targets)
             
             else:
-                self.bot.msg_all('No stored abbrievations yet', targets)
+                self.bot.msg_all(u'No stored abbrievations yet', targets)
          
         except sqlite3.Error as e:
-            self.log.exception("Unable to retrieve abbrievations")
-            self.bot.msg_all("Unable to retrieve abbrievations", targets)
+            self.log.exception(u"Unable to retrieve abbrievations")
+            self.bot.msg_all(u"Unable to retrieve abbrievations", targets)
             
     def does_exist(self, abbr):
         '''
         Returns true if the item with abbr exist in the database
         If it does not it returns false
         '''
-        self.log.debug("Testing if {0} exists".format(abbr))
+        self.log.debug(u"Testing if {0} exists".format(abbr))
         try:
             result = self.db.execute('SELECT * FROM alias_module WHERE short = ?', [abbr]).fetchone()
             if result:
-                self.log.debug("It Does")
+                self.log.debug(u"It Does")
                 return True
                 
             else:
-                self.log.debug("It doesn't")
+                self.log.debug(u"It doesn't")
                 return False
         
         except sqlite3.Error as e:
-            self.log.exception('Could not verify {0} exists'.format(abbr))
+            self.log.exception(u'Could not verify {0} exists'.format(abbr))
             return False
     
     def syntax(self):
-        return  '''
-                Alias supports
-                !learn {x} as {y}
-                !{x}
-                !forget {x}
-                !list_abbr
-                '''
+        return  u"Alias supports !learn {x} as {y}\n!{x}\n!forget {x}\n!list_abbr"
+                
                 
     def close(self):
         #we don't do anything special
@@ -165,12 +162,14 @@ class AliasBot():
 if __name__ == '__main__':
     #basic stream handler
     h = logging.StreamHandler()
-    h.setLevel(logging.DEBUG)
+    h.setLevel(logging.INFO)
     #format to use
-    f = logging.Formatter("%(name)s %(levelname)s %(message)s")
+    f = logging.Formatter(u"%(name)s %(levelname)s %(message)s")
     h.setFormatter(f)
-    file_handler.setFormatter(f)
-    bot = CommandBot('Gamzee', 'irc.segfault.net.nz', 6667, log_handlers=[h])
+    f_h= handlers.TimedRotatingFileHandler("bot.log", when="midnight")
+    f_h.setFormatter(f)
+    f_h.setLevel(logging.DEBUG)
+    bot = CommandBot('arsenic2', 'irc.freenode.net', 6667, log_handlers=[h, f_h])
     mod = AliasBot(bot)
-    bot.join('#bots')
+    bot.join('#tox')
     bot.loop()

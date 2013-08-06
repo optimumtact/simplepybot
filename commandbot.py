@@ -69,6 +69,7 @@ class CommandBot(IrcSocket):
                 ]
         #TODO I need to catch 441 or 436 and handle changing bot name by adding
         #a number or an underscore
+        #catch also a 432 which is a bad uname
 
         self.events = [
 #               self.event('441', self.change_nick),
@@ -177,7 +178,7 @@ class CommandBot(IrcSocket):
         Raises a key error if the name is already in use
         '''
         if name in self.modules:
-            raise KeyError("Module name:{0} already in use".format(name))
+            raise KeyError(u"Module name:{0} already in use".format(name))
         self.modules[name] = module
 
     def get_module(self, name):
@@ -186,7 +187,7 @@ class CommandBot(IrcSocket):
         Raises a key error if there is no module with that name
         '''
         if name not in self.modules:
-            raise KeyError("No module with the name:{0}".format(name))
+            raise KeyError(u"No module with the name:{0}".format(name))
 
         return self.modules[name]
 
@@ -295,7 +296,7 @@ class CommandBot(IrcSocket):
                         event(source, action, args, message)
                     
                     except Exception as e:
-                        self.log.exception("Error in module event handler: {0}".format(module_name))
+                        self.log.exception(u"Error in module event handler: {0}".format(module_name))
 
         #clone timed events list and go through the clone
         for event in self.timed_events[:]:
@@ -324,7 +325,7 @@ class CommandBot(IrcSocket):
             self.msg_all(self.modules[module].syntax(), targets)
         
         else:
-            self.msg_all('No module by that name, try {0}: list modules'.format(self.nick), targets)
+            self.msg_all(u'No module by that name, try {0}: list modules'.format(self.nick), targets)
             
     def end(self, nick, nickhost, action, targets, message, m):
         '''
@@ -376,10 +377,10 @@ class CommandBot(IrcSocket):
             self.close()
         
         else:
-            self.log.info('Sleeping before reconnection attempt, {0} seconds'.format(self.times_reconnected*60))
+            self.log.info(u'Sleeping before reconnection attempt, {0} seconds'.format(self.times_reconnected*60))
             time.sleep(self.times_reconnected*60)
             self.registered = False
-            self.log.info('Attempting reconnection, attempt no: {0}'.format(self.times_reconnected))
+            self.log.info(u'Attempting reconnection, attempt no: {0}'.format(self.times_reconnected))
             self.times_reconnected += 1
             self.connect((self.network, self.port), self.nick, "bot@"+self.network, self.network, self.nick)
     
@@ -403,7 +404,7 @@ class CommandBot(IrcSocket):
                 module.close()
             
             except Exception as e:
-                self.log.exception("Error in closing module {0}".format(module_name))
+                self.log.exception(u"Error in closing module {0}".format(module_name))
                 
         
         self.db.close()
@@ -435,7 +436,7 @@ class CommandBot(IrcSocket):
         message: the message to send
         channel: the target to send it to
         '''
-        self.send('PRIVMSG ' + channel + ' :' + message)
+        self.send(u'PRIVMSG {0} :{1}'.format(channel, message))
 
     def join(self, channel):
         '''
@@ -443,7 +444,7 @@ class CommandBot(IrcSocket):
         channel: the channel to join
         '''
         if self.registered:
-            self.send('JOIN ' + channel)
+            self.send(u'JOIN {0}'.format(channel))
 
         else:
             self.channels.append(channel)
@@ -453,7 +454,7 @@ class CommandBot(IrcSocket):
         Disconnects from a server with a given QUIT message.
         message: message to display with quit
         '''
-        self.send('QUIT :' + message)
+        self.send(u'QUIT :{0}'.format(message))
 
     def leave(self, channel, message=None):
         '''
@@ -463,7 +464,7 @@ class CommandBot(IrcSocket):
         '''
         if message:
             self.msg(message, channel)
-        self.send('PART ' + channel)
+        self.send(u'PART {0}'.format(channel))
 
 
 class TimedEvent():
