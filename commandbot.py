@@ -1,54 +1,67 @@
-from network import IrcSocket
+from network import Network
 import shelve
 import sys
 import re
 import sqlite3
 from datetime import datetime, timedelta
 import time
-from collections import deque
 import logging
-
+import event_util as eu
+import Queue
+import threading
 from authentication import IdentAuth
 
-
-
-class CommandBot(IrcSocket):
+class CommandBot():
     '''
     A simple IRC bot with command processing, event processing and timed event functionalities
     A framework for adding more modules to do more complex stuff
     '''
 
-    def __init__(self, nick, network, port, max_log_len = 100, authmodule=None, db_file = 'bot.db', log_name='BotCore', log_level=logging.DEBUG, log_handlers = None):
+    def __init__(self, nick, network, port, max_log_len = 100, authmodule=None, db_file = "bot.db", module_name="core", log_name="core", log_level=logging.DEBUG, log_handlers = None):
+        self.modules = {}
         #set up logging stuff
         self.log_name = log_name
+        self.module_name = module_name
         self.log = logging.getLogger(self.log_name)
         self.log.setLevel(log_level)
-        #if more handlers were given we need to add them
+        
+        #if handlers were given we need to add them
         if log_handlers:
             for handler in log_handlers:
                 self.log.addHandler(handler)
                 
         #set up network stuff
-        #TODO I need to refactor this out into it's own thread
-        super(CommandBot, self).__init__()
-        assert network and port and nick
-        self.modules = dict()
-        
-        self.connect((network, port), nick, "bot@"+network, network, nick)
+        #IO queues
+        self.inq = Queue.PriorityQueue()
+        self.outq = Queue.PriorityQueue()
+        #Set up network class
+        net = Network(self.inq, self.outq, self.log_name, log_level = log_level)
+        #Despatch the thread
+        self.log.debug("Dispatching network thread")
+        thread = threading.Thread(target=net.loop)
+        thread.start()
+        #params for connection
         self.nick = nick
         self.network = network
         self.port = port
-        
-        #TODO a lot of these need to be made into config options
-        self.max_reconnects = 4#really is 3
-        self.times_reconnected = 1 #starts at 1, goes to 4, see, it really is 3!
-        
+        #set up events to connect and send USER and NICK commands
+        self.out_event(eu.connect(self.network, self.port, self.module_name))
+        self.out_event(eu.user(self.nick, "Python Robot", self.module_name))
+        self.out_event(eu.nick(self.nick, self.module_name))
+        #network stuff done
+
+        #TODO a lot of these need to be made into config options, along with most of the
+        #kwarg params
+        self.max_reconnects = 3
+        self.times_reconnected = 0
+        self.is_running=True
+
         #create a ref to the db connection
         self.db = sqlite3.connect(db_file)
-        
+
         #if no authmodule is passed through, use the default host/ident module
         if not authmodule:
-            self.auth = IdentAuth(self)
+            self.auth = IdentAuth(self, log_level=log_level)
         
         else:
             self.auth = authmodule
@@ -61,39 +74,41 @@ class CommandBot(IrcSocket):
         self.is_mute = False
 
         self.commands = [
-                self.command(r'help', self.syntax, direct=True, private=True),
-                self.command('list modules', self.list_modules, direct=True),
-                self.command('quit', self.end, direct=True, auth_level=20),
-                self.command('mute', self.mute, direct=True, can_mute=False,
+                self.command("quit", self.end, direct=True, auth_level=20),
+                self.command("mute", self.mute, direct=True, can_mute=False,
                              auth_level=20),
+                self.command(r"!syntax ?(?P<module>\S+)?", self.syntax)
                 ]
         #TODO I need to catch 441 or 436 and handle changing bot name by adding
         #a number or an underscore
         #catch also a 432 which is a bad uname
 
         self.events = [
-#               self.event('441', self.change_nick),
-#               self.event('436', self.change_nick),
-                self.event('001', self.registered_event),
-                self.event('ERROR', self.reconnect),
-                self.event('KILL', self.reconnect),
-                self.event('PING', self.ping),
+#               self.event("441", self.change_nick),
+#               self.event("436", self.change_nick),
+                eu.event("001", self.registered_event),
+                eu.event("ERROR", self.reconnect),
+                eu.event("KILL", self.reconnect),
+                eu.event("PING", self.ping),
+                #TODO: can get privmsg handling as an event?
+                #self.event("PRIVMSG", self.handle_priv),
                 ]
 
         self.timed_events = []
-
 
     def command(self, expr, func, direct=False, can_mute=True, private=False,
                 auth_level=100):
         '''
         Helper function that constructs a command handler suitable for CommandBot.
+        Theres are essentially an extension of the EVENT concept from message_util.py
+        with extra arguments and working only on PRIVMSGS
 
         args:
             expr - regex string to be matched against user message
             func - function to be called upon a match
 
         kwargs:
-            direct - this message must start with the bots nickname i.e botname
+            direct - this message eust start with the bots nickname i.e botname
                      quit or botname: quit
             can_mute - Can this message be muted?
             private - Is this message always going to a private channel?
@@ -108,20 +123,18 @@ class CommandBot(IrcSocket):
         bot = self
         def process(source, action, args, message):
             #grab nick and nick host
-            nick, nickhost = source.split('!')
-            #there is some left over space from processing in network module
-            #TODO: this should be done over there, not here
-            nickhost = nickhost.strip(' ')
+            nick, nickhost = source.split("!")
             
             #unfortunately there is weirdness in irc and when you get addressed in
             #a privmsg you see your own name as the channel instead of theirs
             #It would be nice if both sides saw the other persons name
-            #I guess they weren't thinking of bots when they wrote the spec
+            #I guess they weren"t thinking of bots when they wrote the spec
+            #so we replace any instance of our nick with their nick
             for i, channel in enumerate(args[:]):
-                if channel == bot.nick:
+                if channel == self.nick:
                     args[i] = nick
                     
-            #make sure this message was prefixed with our bot's username
+            #make sure this message was prefixed with our bot username
             if direct:
                 if not message.startswith(bot.nick):
                     return False
@@ -130,11 +143,11 @@ class CommandBot(IrcSocket):
                 message = message[len(bot.nick):]
                 #strip away any syntax left over from addressing
                 #this may or may not be there
-                message = message.lstrip(': ')
+                message = message.lstrip(": ")
             
             #If muted, or message private, send it to user not channel
             if (self.is_mute or private) and can_mute:
-                #replace args with name stripped from source
+                #replace args with usernick stripped from source
                 args = [nick]
             
 
@@ -146,7 +159,6 @@ class CommandBot(IrcSocket):
 
             if auth_level:
                 if not bot.auth.is_allowed(nick, nickhost, auth_level):
-                    #bot.msg_all('{0} is not authenticated to do that'.format(nick), args)
                     return True
 
             #call the function
@@ -154,23 +166,12 @@ class CommandBot(IrcSocket):
             return True
 
         return process
-
-    def event(self, event_id, func):
-        '''
-        Helper function that constructs an event handler suitable for CommandBot.
-        These are intended to capture events from IRC servers, such as the 001 event 
-        you receive for correctly registering, or errors such as nick in use
-        
-        They also provide access to PRIVMSG's with a much lower level of manipulation
-        '''
-        event_id = event_id
-        def process(source, action, args, message):
-            if not event_id == action:
-                return False
-                
-            func(source, action, args, message)
-            return True
-        return process
+    
+    def in_event(self, event):
+        self.inq.put(event)
+    
+    def out_event(self, event):
+        self.outq.put(event)
 
     def add_module(self, name, module):
         '''
@@ -188,7 +189,6 @@ class CommandBot(IrcSocket):
         '''
         if name not in self.modules:
             raise KeyError(u"No module with the name:{0}".format(name))
-
         return self.modules[name]
 
     def has_module(self, name):
@@ -197,10 +197,9 @@ class CommandBot(IrcSocket):
         '''
         if name not in self.modules:
             return False
-
         else:
             return True
-    
+
     def run_event_in(self, seconds, func, func_args=(), func_kwargs={}):
         '''
         Helper function that runs an event x seconds in the future, where seconds
@@ -220,20 +219,20 @@ class CommandBot(IrcSocket):
         Start time and end time are datetime objects
         and interval is a timedelta object
         '''
-        self.timed_events.append(TimedEvent(start_time, end_time, interval, func, func_args, func_kwargs))
-
+        t_event = eu.TimedEvent(start_time, end_time, interval, func, func_args, func_kwargs)
+        self.timed_events.append(t_event)
 
     def loop(self):
         '''
         Primary loop.
-
         You'll need to transfer control to this function before execution begins.
         This is provided so you can hook in at the loop level and change things here
         in a subclass
         '''
-        while True:
+        while self.is_running:
             self.logic()
             time.sleep(.1)
+        self.log.info("Bot ending")
 
     def logic(self):
         '''
@@ -252,40 +251,47 @@ class CommandBot(IrcSocket):
 
         It also evaluates all timed events and triggers them appropriately
         '''
-        for m in self.get_messages():
-            was_command = False
-            source, action, args, message = m
-            #self.log.debug('Logic loop event {0}'.format(m))
-
+        try:
+            #try to grab an event from the inbound queue
+            m_event = self.inq.get(False)
+            self.log.debug(u"Inbound event {0}".format(m_event))
+            was_event = False
+            #this is the cleaned data from an irc msg
+            #i.e PRIVMSG francis!francis@localhost [#bots] "hey all"
             #if a priv message we first pass it through the command handlers
-            if message and action == "PRIVMSG":
+            if m_event.type == "PRIVMSG":
+                was_event=True
+                #unpack the data!
+                action, source, args, message = m_event.data
                 for command in self.commands:
                     try:
                         if command(source, action, args, message):
-                            action ='COMMAND' #we set the action to command so valid commands can be identified by modules
-                            break
-                    
+                            action ="COMMAND" #we set the action to command so valid commands can be identified by modules
+                            break #TODO, should we break, needs a lot more thought
+
                     except Exception as e:
                         self.log.exception("Error in bot command handler")
-                        self.msg_all("Unable to complete request due to internal error", args)
+                        self.out_event(eu.msg_all("Unable to complete request due to internal error", args, self.module_name))
                         
+
                 for module_name in self.modules:
                     module = self.modules[module_name]
                     for command in module.commands:
                         try:
                             if command(source, action, args, message):
-                                action = 'COMMAND'
+                                action = "COMMAND"
                                 break
-                        
+
                         except Exception as e:
                             self.log.exception("Error in module command handler:{0}".format(module_name))
-                            self.msg_all("Unable to complete request due to internal error", args)
+                            self.out_event(eu.msg_all("Unable to complete request due to internal error", args, self.module_name))
 
             #check it against the event commands
             for event in self.events:
                 try:
-                    event(source, action, args, message)
-                
+                    if event(m_event):
+                        was_event = True
+
                 except Exception as e:
                     self.log.exception("Error in bot event handler")
 
@@ -293,17 +299,25 @@ class CommandBot(IrcSocket):
                 module = self.modules[module_name]
                 for event in module.events:
                     try:
-                        event(source, action, args, message)
-                    
+                        if event(m_event):
+                            was_event = True
+
                     except Exception as e:
                         self.log.exception(u"Error in module event handler: {0}".format(module_name))
+
+            if not was_event:
+                self.log.debug(u"Unhandled event {0}".format(m_event))
+
+        except Queue.Empty:
+            #nothing to do
+            pass
 
         #clone timed events list and go through the clone
         for event in self.timed_events[:]:
             if event.should_trigger():
                 try:
                     event.func(*event.func_args, **event.func_kwargs)
-                
+
                 except Exception as e:
                     self.log.exception("Error in timed event handler")
 
@@ -313,41 +327,54 @@ class CommandBot(IrcSocket):
 
         return
 
-    def list_modules(self, nick, nickhost, action, targets, message, m):
-        '''
-        Send a list of all loaded modules
-        '''
-        self.msg_all(', '.join(self.modules.keys()), targets)
-    
     def syntax (self, nick, nickhost, action, targets, message, m):
-        for module in self.modules:
-            syntax  = self.modules[module].syntax().split("\n")
-            r = []
-            for s in syntax:
-                s = s.lstrip(" ")
-                r.append(s)
-            self.msgs_all(r, targets)
-            
+        '''
+        either lists all module names or if a modulename is provided
+        calls that modules syntax method
+        '''
+        if m.group("module"):
+            module = m.group("module")
+            if self.has_module(module):
+                try:
+                    self.get_module(module).syntax()
+
+                except AttributeError as e:
+                    self.log.warn(u"Module {0} has no syntax method".format(module))
+        
+        else:
+            msg = ", ".join(self.modules.keys())
+            self.out_event(eu.msg_all(msg, targets, self.module_name))
+
     def end(self, nick, nickhost, action, targets, message, m):
         '''
         End this bot, closing each module and quitting the server
         '''
-        self.quit('Goodbye for now')
-        self.close()
+        self.log.info("Shutting down bot")
+        self.db.close()
+        for name in self.modules:
+            module = self.modules[name]
+            try:
+                module.close()
+            except AttributeError as e:
+                self.log.warning(u"Module {0} has no close method".format(name))
+
+        self.out_event(eu.quit("Goodbye for now", self.module_name, priority=1))
+        self.out_event(eu.kill(self.module_name, priority=1))
+        self.is_running=False
 
     def mute(self, nick, nickhost, action, targets, message, m):
         '''
-        Mute/unmute the bot
+        mute/unmute the bot
         '''
         self.is_mute = not self.is_mute
 
         if self.is_mute:
-            message = 'Bot is now muted'
+            message = "Bot is now muted"
         
         else:
-            message = 'Bot is now unmuted'
+            message = "Bot is now unmuted"
 
-        self.msg_all(message, targets)
+        self.out_event(eu.msg_all(message, targets, self.module_name))
 
     def registered_event(self, source, action, args, message):
         '''
@@ -361,157 +388,46 @@ class CommandBot(IrcSocket):
         self.registered = True
         for channel in self.channels:
             self.join(channel)
-    
+
+    def join(self, channel):
+        if self.registered:
+            event = eu.join(channel, self.module_name)
+            self.out_event(event)
+            if not self.channels.contains(channel):
+                self.channels.append(channel)
+        else:
+            self.channels.append(channel)
+
     def reconnect(self, source, event, args, message):
         '''
         Handles disconnection by trying to reconnect 3 times
         before quitting
         '''
-        #if we have been kicked, don't attempt a reconnect
-        if  event == 'KILL':
-            self.log.error('No reconnection attempt due to being killed')
+        #if we have been kicked, don"t attempt a reconnect
+        if  event == "KILL":
+            self.log.info("No reconnection attempt due to being killed")
             self.close()
             
-        self.log.error('Lost connection to server:{0}'.format(message))
+        self.log.error("Lost connection to server:{0}".format(message))
         if self.times_reconnected >= self.max_reconnects:
-            self.log.error('Unable to reconnect to server on third attempt')
+            self.log.error("Unable to reconnect to server on third attempt")
             self.close()
         
         else:
-            self.log.info(u'Sleeping before reconnection attempt, {0} seconds'.format(self.times_reconnected*60))
-            time.sleep(self.times_reconnected*60)
+            self.log.info(u"Sleeping before reconnection attempt, {0} seconds".format(self.times_reconnected*60))
+            time.sleep((self.times_reconnected+1)*60)
             self.registered = False
-            self.log.info(u'Attempting reconnection, attempt no: {0}'.format(self.times_reconnected))
+            self.log.info(u"Attempting reconnection, attempt no: {0}".format(self.times_reconnected))
             self.times_reconnected += 1
-            self.connect((self.network, self.port), self.nick, "bot@"+self.network, self.network, self.nick)
+            #set up events to connect and send USER and NICK commands
+            self.out_event(eu.connect(self.network, self.port, self.module_name))
+            self.out_event(eu.user(self.nick, "Python Robot", self.module_name))
+            self.out_event(eu.nick(self.nick, self.module_name))
     
     def ping(self, source, action, args, message):
         '''
         Called on a ping and responds with a PONG
         Module authors can also hook the PING event for a low resolution timer
-        if you didn't want to use the timed events system for some reason
+        if you didn"t want to use the timed events system for some reason
         '''
-        self.send('PONG {0}'.format(message))
-        
-    def close(self):
-        '''
-        Handle module cleanup, database cleanup and ending script
-        '''
-        self.log.info("Shutting down bot")
-        for module_name in self.modules:
-            module = self.modules[module_name]
-            
-            try:
-                module.close()
-            
-            except Exception as e:
-                self.log.exception(u"Error in closing module {0}".format(module_name))
-                
-        
-        self.db.close()
-        sys.exit()
-
-    #Everything below this point is just convienience methods for IRC
-    def msgs_all(self, msgs, channels):
-        """
-        Accepts a list of messages to send to a list of channels
-        msgs: A list of messages to send
-        channels: A list of targets to send it to
-        """
-        for channel in channels:
-            for message in msgs:
-                self.msg(message, channel)
-
-    def msg_all(self, message, channels):
-        """
-        Accepts a message to send to a list of channels
-        message: the message to send
-        channels: A list of targets to send it to
-        """
-        for channel in channels:
-            self.msg(message, channel)
-
-    def msg(self, message, channel):
-        '''
-        Send a message to a specific target.
-        message: the message to send
-        channel: the target to send it to
-        '''
-        self.send(u'PRIVMSG {0} :{1}'.format(channel, message))
-
-    def join(self, channel):
-        '''
-        Join a channel.
-        channel: the channel to join
-        '''
-        if self.registered:
-            self.send(u'JOIN {0}'.format(channel))
-
-        else:
-            self.channels.append(channel)
-
-    def quit(self, message):
-        '''
-        Disconnects from a server with a given QUIT message.
-        message: message to display with quit
-        '''
-        self.send(u'QUIT :{0}'.format(message))
-
-    def leave(self, channel, message=None):
-        '''
-        Leaves a channel, optionally sending a message to the channel first.
-        channel: Channel to leave
-        message: optional message to send first
-        '''
-        if message:
-            self.msg(message, channel)
-        self.send(u'PART {0}'.format(channel))
-
-
-class TimedEvent():
-    '''
-    Represents a timed event, 
-    the should_trigger method will return true if the 
-    function should be triggered at the current time
-
-    the is_expired method will return true if the timedevent
-    has expired (gone past it's end_date)
-    '''
-
-    def __init__(self, start_date, end_date, interval, func, func_args, func_kwargs):
-        '''
-        set up a new timed event object 
-        '''
-        self.sd = start_date
-        self.ed = end_date
-        self.interval = interval
-        self.func = func
-        self.func_args = func_args
-        self.func_kwargs = func_kwargs
-
-        self.next_timeout = self.sd + self.interval
-
-    def should_trigger(self):
-        '''
-        Returns true if the timed event interval has elapsed and we need
-        to trigger the function. It also updates when the next timeout
-        should occur
-        '''
-        current_time = datetime.now()
-        if current_time > self.next_timeout:
-            self.next_timeout = current_time + self.interval
-            return True
-
-        else:
-            return False
-
-    def is_expired(self):
-        '''
-        Returns true if the current time is greater than the end_time for
-        this event
-        '''
-        if datetime.now() > self.ed:
-            return True
-
-        else:
-            return False
+        self.out_event(eu.pong(message, self.module_name))

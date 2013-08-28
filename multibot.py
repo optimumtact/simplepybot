@@ -1,9 +1,4 @@
 from commandbot import *
-from reminder import *
-from ltmfgy import *
-from log_search import *
-from aliasbot import *
-from quote import *
 import logging
 import logging.handlers as handlers
 
@@ -19,12 +14,7 @@ h.setFormatter(f)
 file_handler.setFormatter(f)
 
 #create bot instance
-bot = CommandBot('FullTest', 'irc.segfault.net.nz', 6667, log_handlers=[h, file_handler])
+bot = CommandBot('Test', 'irc.segfault.net.nz', 6667, log_level=logging.DEBUG, log_handlers=[h, file_handler])
 bot.join('#bots')
 #add modules
-AliasBot(bot)
-QuoteBot(bot)
-ReminderModule(bot)
-GoogleModule(bot)
-LogModule(bot)
 bot.loop()

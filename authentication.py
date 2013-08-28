@@ -1,15 +1,17 @@
 import sqlite3
 import logging
+import event_util as eu
 
 class IdentAuth:
-    def __init__(self, bot, module_name='IdentAuth', log_level = logging.DEBUG):
+    def __init__(self, bot, module_name='identauth', log_level = logging.INFO):
         self.bot = bot
         self.log = logging.getLogger(bot.log_name+'.'+module_name)
         self.log.setLevel(log_level)
         self.db = bot.db
+        self.module_name = module_name
         #set up our db table
         c = self.db.cursor()
-        c.execute('''CREATE TABLE IF NOT EXISTS auth (name TEXT UNIQUE NOT NULL, level INTEGER NOT NULL)''')
+        c.execute("CREATE TABLE IF NOT EXISTS {0} (name TEXT UNIQUE NOT NULL, level INTEGER NOT NULL)".format(self.module_name))
         self.db.commit()
         self.bot.add_module(module_name, self)
         self.commands = [
@@ -27,18 +29,18 @@ class IdentAuth:
         nickhost = m.group('nickhost')
         level = int(m.group('level'))
         result = self.add_user(nickhost, level)
-        self.bot.msg_all(result, targets)
+        self.bot.out_event(eu.msg_all(result, targets, self.module_name))
     
     def update_user_c(self, nick, nickhost, action, targets, message, m):
         nickhost = m.group('nickhost')
         level = int(m.group('level'))
         result = self.update_user(nickhost, level)
-        self.bot.msg_all(result, targets)
+        self.bot.out_event(eu.msg_all(result, targets, self.module_name))
     
     def del_user_c(self, nick, nickhost, action, targets, message, m):
         nickhost = m.group('nickhost')
         result = self.delete_user(nickhost)
-        self.bot.msg_all(result, targets)
+        self.bot.out_event(eu.msg_all(result, targets, self.module_name))
     
     def show_user_c(self, nick, nickhost, action, targets, message, m):
         given_nickhost = m.group('nickhost')
@@ -46,26 +48,27 @@ class IdentAuth:
         if given_nickhost:
             given_nickhost = given_nickhost.lstrip(' ')
             level = self.get_level(given_nickhost)
-            self.bot.msg_all(level, targets)
+            self.bot.out_event(eu.msg_all(level, targets, self.module_name))
         
         else:
             level = self.get_level(nickhost)
-            self.bot.msg_all(level, targets)
+            self.bot.out_event(eu.msg_all(level, targets, self.module_name))
         
     def bootstrap(self, nick, nickhost, action, targets, message, m):
         try:
             result = self.db.execute('''SELECT * FROM auth''').fetchall()
             if result:
                 self.log.warning('Attempted to bootstrap when module was already boostrapped')
-                self.bot.msg_all('The authentication is already bootstrapped', targets)
+                self.bot.out_event(eu.msg_all("The authentication is already bootstrapped", targets, self.module_name))
             
             else:
                 self.log.info('Bootstrap by user {0} successfull'.format(nick))
-                self.bot.msg_all(self.add_user(nickhost, 0), targets)
+                self.bot.out_event(eu.msg_all(self.add_user(nickhost, 0), targets, self.module_name))
          
         except sqlite3.Error as e:
             self.log.exception("Unable to boostrap auth")
-            self.bot.msg_all('Unable to bootstrap due to database error {0}'.format(e.args[0]), targets)
+            result = 'Unable to bootstrap due to database error {0}'.format(e.args[0])
+            self.bot.out_event(eu.msg_all(result, targets, self.module_name))
                 
         
     def is_allowed(self, nick, nickhost, level):

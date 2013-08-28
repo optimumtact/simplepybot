@@ -1,73 +1,166 @@
 import re
 import socket
 import errno
-#import logging
+import select
+import logging
+import Queue as q
+import event_util as eu
+import time
 
-class IrcSocket(object):
+class Network(object):
     '''
-    Base IrcSocket class.
+    Handles messages to the socket
 
     Consists of a few basic functions aside from sending/receiving.
     Sending NICK, USER, message parsing, and sending PONG responses.
     '''
-    #Really long regex to match and split most irc messages correctly (No guarantees though as I haven't fully roadtested it)
+    #Really long regex to match and split most irc messages correctly (No guarantees though as I haven"t fully roadtested it)
     ircmsg = re.compile(r"(?P<prefix>:\S+ )?(?P<command>(\w+|\d{3}))(?P<params>( [^:]\S+)*)(?P<postfix> :.*)?")
 
-    def __init__(self, b_size = 1024):
+    def __init__(self, inqueue, outqueue, botname, module_name="network", b_size = 1024, log_level=logging.INFO):
         self.socket = None
-        self.incomplete_buffer = ''
-        self.buffer_size = b_size
-
-    def connect(self, address, nick, ident, server, realname):
-        '''
-        Connect to a server.
-
-        Sends NICK and USER messages.
-        '''
+        self.module_name = module_name
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket.connect(address)
-        self.socket.settimeout(0.1)
-        self.send(u'NICK %s' % nick)
-        self.send(u'USER %s %s %s :%s' % (nick, ident, server, realname))
+        self.socket.setblocking(0)
+        self.incomplete_buffer = ""
+        self.buffer_size = b_size
+        self.log = logging.getLogger(u"{0}.{1}".format(botname, module_name))
+        self.log.setLevel(log_level)
+        self.is_running = True
+        self.connected = False
+        #priority queues with data in form of (priority, data)
+        self.inq = inqueue
+        self.outq = outqueue
+        
+        #list of our sockets
+        self.inputs = [self.socket]
+        self.outputs = [self.socket]
+        
+        #Events coming out of the network - mostly used to alter priorities for things
+        self.in_events = []
+        #Event coming in from the ircbot core
+        self.out_events = [eu.event("MSGS_ALL", self.msgs_all),
+                                eu.event("MSGS", self.msgs),
+                                eu.event("MSG_ALL", self.msg_all),
+                                eu.event("CONN", self.connect),
+                                eu.event("USER", self.user),
+                                eu.event("NICK", self.nick),
+                                eu.event("JOIN", self.join),
+                                eu.event("QUIT", self.quit),
+                                eu.event("KILL", self.kill),
+                                eu.event("PONG", self.pong),
+                                ]
+        self.log.info("Network intialised")
 
-    def send(self, line, encoding="utf-8"):
+    def loop(self):
+        self.log.debug("Looping started")
+        while self.is_running:
+            if not self.connected:
+                try:
+                    m_event = self.outq.get(False)
+                    if m_event.type == "CONN":
+                        self.log.debug("Connection event!")
+                        self.connect(*m_event.data)
+                    else:
+                        pass
+                except q.Empty as e:
+                    pass
+            else:
+                self.poll_sockets()
+        self.log.info("network ending")
+
+    def poll_sockets(self):
         '''
-        Send a line to the server.
+        Uses select to get readable/writable sockets then calls
+        read or write on them
+        '''
+        readable, writable, exceptional = select.select(self.inputs, self.outputs, self.inputs, 0.1)
+        if readable:
+            for r in readable:
+                #read from r, placing the messages in the given queue 
+                self.read(r, self.inq)
 
-        Formatted as required by rfc 1459
+        if writable and not self.outq.empty():
+            for w in writable:
+                #write to w with items pulled from the given queue
+                self.write(w, self.outq)
+
+        if exceptional:
+            for e in exceptional:
+                #TODO can we get the error to log as well?
+                self.log.error(u"Exceptional socket {0}".format(e.getpeername()))
+                self.inputs.remove(e)
+                self.outputs.remove(e)
+        
+        #if we lost all our sockets
+        if not self.inputs or not self.outputs:
+            self.log.error(u"No sockets left to read/write")
+            self.connected = False
+            #highest priority message that will get client to attempt to reconnect
+            self.inq.put(eu.error("No sockets left to read/write from", self.module_name, mu.ALL, priority=1))
+
+    def write(self, socket, outqueue):
+        '''
+        Takes an item from the outbound queue and puts it through our internal
+        event handlers
         '''
         try:
-            self.log.debug(">> %s" % line)
-            line = line.replace('\r', '\r\n').replace('\n', '\r\n') + '\r\n'
-            totalsent = 0
-            while totalsent < len(line):
-                sent = self.socket.send(line[totalsent:].encode(encoding))
-                if sent is 0 :
-                    raise RuntimeError('Socket connection broken')
-                totalsent = totalsent + sent
-            #self.socket.send(line.encode(encoding))
-        except socket.error as e:
-            self.log.exception('Socket send failure')
-            #TODO handle this nicely
-            raise RuntimeError('Socket connection broken')
+            #grab an item from the outbound queue
+            m_event = self.outq.get(False)
+            self.log.debug(u"Outwards event, {0}, data {1}".format(m_event.type, m_event.data))
+            #put them through our outbound event handlers
+            triggered = False
+            for e in self.out_events:
+                if e(m_event):
+                    triggered = True
+
+            if not triggered:
+                self.log.debug(u"Unhandled outbound event {0} data:{1}".format(m_event.type, m_event.data))
+
+        except q.Empty:
+            #nothing to write
+            pass
+
+    def read(self, socket, inqueue):
+        '''
+        Pull all possible irc lines from the socket
+        parse them and then put them through our internal
+        event handling before sending them to the client
+        '''
+        #pull all current lines from socket
+        result = self.recv()
+        clean = []
+        for line in result:
+            cleaned_message = self.parse_message(line)
+            clean.append(cleaned_message)
+        
+        #go through the cleaned messages and put them through our internal
+        #event handling before they reach client (normally used to tweak priorities)
+        for x in clean:
+            for e in self.in_events:
+                e(x)
             
+            self.inq.put(x)
+
+    def send(self, line, encoding="utf-8"):
+        #send the message out
+        #send takes the form SENDOUT [lines..]
+        self.log.info(u">> {0}".format(line))
+        line = line.replace("\r", " ").replace("\n", " ") + "\r\n"
+        totalsent = 0
+        while totalsent < len(line):
+            sent = self.socket.send(line[totalsent:].encode(encoding))
+            totalsent = totalsent + sent
+                
+
     def recv(self):
         '''
         Receives data from the server.
         '''
         buffer_size = self.buffer_size
-        try:
-            d = self.socket.recv(buffer_size)
+        d = self.socket.recv(buffer_size)
 
-        except socket.timeout as e:
-            #nothing recv, no new messages
-            return []
-        
-        except socket.error as e:
-            self.log.exception('Socket read failure')
-            return [u'ERROR :{0}'.format(e)]
-            
-        data = d.decode('utf-8', 'replace')
+        data = d.decode("utf-8", "replace")
 
         '''
         Read a stream of data, splitting it into messages seperated by \r\n.
@@ -77,13 +170,13 @@ class IrcSocket(object):
         '''
         if self.incomplete_buffer:
             data = self.incomplete_buffer + data
-            incomplete_buffer = ''
+            incomplete_buffer = ""
 
-        if data[-2:] is '\r\n':
-            split_data = data.split('\r\n')
+        if data[-2:] is "\r\n":
+            split_data = data.split("\r\n")
 
         else:
-            split_data = data.split('\r\n')
+            split_data = data.split("\r\n")
             self.incomplete_buffer = split_data.pop(-1)
 
         return split_data
@@ -92,40 +185,142 @@ class IrcSocket(object):
         '''
         Utility method turning an ircmsg into a nicely formatted tuple for ease of use.
         '''
-        #logging.debug(message)
         m = self.ircmsg.match(message)
+
         if not m:
-            logging.warn(u'Couldn\'t match message {0}'.format(message))
+            self.log.warn(u"Couldn\"t match message {0}".format(message))
             return None
 
-        postfix = m.group('postfix')
+        postfix = m.group("postfix")
         if postfix:
-            postfix = postfix.lstrip(' ')
-            postfix = postfix.lstrip(':')
+            postfix = postfix.strip(" ")
+            postfix = postfix.lstrip(":")
 
-        command = m.group('command')
+        command = m.group("command")
 
-        prefix = m.group('prefix')
+        prefix = m.group("prefix")
         if prefix:
-            prefix = prefix.lstrip(' ')
-            prefix = prefix.lstrip(':')
+            prefix = prefix.strip(" ")
+            prefix = prefix.lstrip(":")
 
-        params = m.group('params')
+        params = m.group("params")
         if params:
-            params = params.lstrip(' ')
-            params = params.split(' ')
+            params = params.strip(" ")
+            params = params.split(" ")
+        
+        self.log.debug(u"Cleaned message, prefix = {0}, command = {1}, params = {2}, postfix = {3}".format(prefix, command, params, postfix))
+        self.log.info(u"<< {0} {1} {2} {3}".format(prefix, command, params, postfix))
+        return eu.irc_msg(command, (command, prefix, params, postfix), self.module_name)
 
-        #logging.debug('Cleaned message, prefix = {0}, command = {1}, params = {2}, postfix = {3}'.format(prefix, command, params, postfix))
-        return (prefix, command, params, postfix)
+    #Everything below this point are handlers for events from botcore
+    def msgs_all(self, msgs, channels):
+        '''
+        Accepts a list of messages to send to a list of channels
+        msgs: A list of messages to send
+        channels: A list of targets to send it to
+        '''
+        for channel in channels:
+            for message in msgs:
+                self.msg(message, channel)
 
-    def get_messages(self):
+    def msg_all(self, message, channels):
         '''
-        Get a number of messages from the socket and return them in list form
+        Accepts a message to send to a list of channels
+        message: the message to send
+        channels: A list of targets to send it to
         '''
-        result = self.recv()
-        clean = []
-        for line in result:
-            cleaned_message = self.parse_message(line)
-            if cleaned_message:
-                self.log.debug(u'<< {0} {1} {2} :{3}'.format(*cleaned_message))
-                yield cleaned_message
+        for channel in channels:
+            self.msg(message, channel)
+
+    def msg(self, message, channel):
+        '''
+        Send a message to a specific target.
+        message: the message to send
+        channel: the target to send it to
+        
+        This method takes care of enforcing the 512 character limit
+        right now it does it very simply by cutting the message at char 510
+        (leaving space for the \r\n) and calling msg again with the remainder
+        later on it might be improved by finding the nearest space to cut on
+        under the limit
+        '''
+        msg = u"PRIVMSG {0} :{1}".format(channel, message)
+        if len(msg) > 512:
+            sending = msg[:510]
+            remainder = msg[510:]
+            self.send(sending)
+            self.msg(remainder, channel)
+        
+        else:
+            self.send(msg)
+
+    def msgs(self, msgs, channel):
+        '''
+        Send a list of msgs to a channel
+        '''
+        for msg in msgs:
+            self.msg(msg, channel)
+
+    def join(self, channel):
+        '''
+        Join a channel.
+        channel: the channel to join
+        '''      
+        self.send(u"JOIN {0}".format(channel))
+
+    def quit(self, message):
+        '''
+        Disconnects from a server with a optional QUIT message.
+        '''
+        if message:
+            self.send(u"QUIT :{0}".format(message))
+        
+        else:
+            self.send(u"QUIT")
+    
+    def kill(self):
+        '''
+        Die!
+        '''
+        self.is_running = False
+
+    def leave(self, channel, message):
+        '''
+        Leaves a channel, optionally sending a message to the channel first.
+        channel: Channel to leave
+        message: optional message to send first
+        '''
+        if message:
+            self.msg(message, channel)
+        self.send(u"PART {0}".format(channel))
+
+    def connect(self, server, port):
+        '''
+        Connect to a server.
+        data is the args
+        '''
+        try:
+            self.socket.connect((server,port))
+        except socket.error as e:
+            if e.errno == 10035:
+                pass
+            else:
+                raise e
+
+        self.connected = True
+
+    def nick(self, nick):
+        '''
+        Send the nick command with the given nick
+        '''
+        self.send(u"NICK {0}".format(nick))
+
+    def user(self, nick, realname):
+        '''
+        Send the USER command with the given realname and nick
+        HOSTNAME and SERVERNAME are given as PYBOT
+        '''
+        self.send(u"USER {0} PYBOT PYBOT :{1}".format(nick, realname))
+    
+    def pong(self, msg):
+        self.send(u"PONG {0}".format(msg))
