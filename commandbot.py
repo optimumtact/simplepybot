@@ -10,6 +10,7 @@ import event_util as eu
 import Queue
 import threading
 from authentication import IdentAuth
+from ircmodule import IRC_Wrapper
 
 class CommandBot():
     '''
@@ -17,7 +18,10 @@ class CommandBot():
     A framework for adding more modules to do more complex stuff
     '''
 
-    def __init__(self, nick, network, port, max_log_len = 100, authmodule=None, db_file = "bot.db", module_name="core", log_name="core", log_level=logging.DEBUG, log_handlers = None):
+    def __init__(self, nick, network, port, max_log_len = 100, authmodule=None, ircmodule=None,
+                 db_file = "bot.db", module_name="core", log_name="core", log_level=logging.DEBUG,
+                 log_handlers = None):
+
         self.modules = {}
         #set up logging stuff
         self.log_name = log_name
@@ -44,10 +48,7 @@ class CommandBot():
         self.nick = nick
         self.network = network
         self.port = port
-        #set up events to connect and send USER and NICK commands
-        self.out_event(eu.connect(self.network, self.port, self.module_name))
-        self.out_event(eu.user(self.nick, "Python Robot", self.module_name))
-        self.out_event(eu.nick(self.nick, self.module_name))
+       
         #network stuff done
 
         #TODO a lot of these need to be made into config options, along with most of the
@@ -58,7 +59,13 @@ class CommandBot():
 
         #create a ref to the db connection
         self.db = sqlite3.connect(db_file)
-
+        
+        #irc module bootstrapped before auth, as auth uses it
+        if not ircmodule:
+            self.irc = IRC_Wrapper(self, log_level=log_level)
+        
+        else:
+            self.irc = ircmodule
         #if no authmodule is passed through, use the default host/ident module
         if not authmodule:
             self.auth = IdentAuth(self, log_level=log_level)
@@ -66,6 +73,7 @@ class CommandBot():
         else:
             self.auth = authmodule
 
+        
         #variables for determining when the bot is registered
         self.registered = False
         self.channels = []
@@ -95,6 +103,11 @@ class CommandBot():
                 ]
 
         self.timed_events = []
+
+        #send out events to connect and send USER and NICK commands
+        self.irc.connect(self.network, self.port)
+        self.irc.user(self.nick, "Python Robot")
+        self.irc.nick(self.nick)
 
     def command(self, expr, func, direct=False, can_mute=True, private=False,
                 auth_level=100):
@@ -271,7 +284,7 @@ class CommandBot():
 
                     except Exception as e:
                         self.log.exception("Error in bot command handler")
-                        self.out_event(eu.msg_all("Unable to complete request due to internal error", args, self.module_name))
+                        self.irc.msg_all("Unable to complete request due to internal error", args)
                         
 
                 for module_name in self.modules:
@@ -284,7 +297,7 @@ class CommandBot():
 
                         except Exception as e:
                             self.log.exception("Error in module command handler:{0}".format(module_name))
-                            self.out_event(eu.msg_all("Unable to complete request due to internal error", args, self.module_name))
+                            self.irc.msg_all("Unable to complete request due to internal error", args)
 
             #check it against the event commands
             for event in self.events:
@@ -343,7 +356,7 @@ class CommandBot():
         
         else:
             msg = ", ".join(self.modules.keys())
-            self.out_event(eu.msg_all(msg, targets, self.module_name))
+            self.irc.msg_all(msg, targets)
 
     def end(self, nick, nickhost, action, targets, message, m):
         '''
@@ -358,8 +371,8 @@ class CommandBot():
             except AttributeError as e:
                 self.log.warning(u"Module {0} has no close method".format(name))
 
-        self.out_event(eu.quit("Goodbye for now", self.module_name, priority=1))
-        self.out_event(eu.kill(self.module_name, priority=1))
+        self.irc.quit("Goodbye for now")
+        self.irc.kill()
         self.is_running=False
 
     def mute(self, nick, nickhost, action, targets, message, m):
@@ -374,7 +387,7 @@ class CommandBot():
         else:
             message = "Bot is now unmuted"
 
-        self.out_event(eu.msg_all(message, targets, self.module_name))
+        self.irc.msg_all(message, targets)
 
     def registered_event(self, source, action, args, message):
         '''
@@ -391,9 +404,9 @@ class CommandBot():
 
     def join(self, channel):
         if self.registered:
-            event = eu.join(channel, self.module_name)
+            event = eu.join(channel)
             self.out_event(event)
-            if not self.channels.contains(channel):
+            if not(channel in self.channels):
                 self.channels.append(channel)
         else:
             self.channels.append(channel)
@@ -420,9 +433,9 @@ class CommandBot():
             self.log.info(u"Attempting reconnection, attempt no: {0}".format(self.times_reconnected))
             self.times_reconnected += 1
             #set up events to connect and send USER and NICK commands
-            self.out_event(eu.connect(self.network, self.port, self.module_name))
-            self.out_event(eu.user(self.nick, "Python Robot", self.module_name))
-            self.out_event(eu.nick(self.nick, self.module_name))
+            self.irc.connect(self.network, self.port)
+            self.irc.user(self.nick, "Python Robot")
+            self.irc.nick(self.nick)
     
     def ping(self, source, action, args, message):
         '''
@@ -430,4 +443,4 @@ class CommandBot():
         Module authors can also hook the PING event for a low resolution timer
         if you didn"t want to use the timed events system for some reason
         '''
-        self.out_event(eu.pong(message, self.module_name))
+        self.irc.pong(message)

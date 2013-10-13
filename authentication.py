@@ -8,6 +8,7 @@ class IdentAuth:
         self.log = logging.getLogger(bot.log_name+'.'+module_name)
         self.log.setLevel(log_level)
         self.db = bot.db
+        self.irc = bot.irc
         self.module_name = module_name
         #set up our db table
         c = self.db.cursor()
@@ -29,18 +30,18 @@ class IdentAuth:
         nickhost = m.group('nickhost')
         level = int(m.group('level'))
         result = self.add_user(nickhost, level)
-        self.bot.out_event(eu.msg_all(result, targets, self.module_name))
+        self.irc.msg_all(result, targets)
     
     def update_user_c(self, nick, nickhost, action, targets, message, m):
         nickhost = m.group('nickhost')
         level = int(m.group('level'))
         result = self.update_user(nickhost, level)
-        self.bot.out_event(eu.msg_all(result, targets, self.module_name))
+        self.irc.msg_all(result, targets)
     
     def del_user_c(self, nick, nickhost, action, targets, message, m):
         nickhost = m.group('nickhost')
         result = self.delete_user(nickhost)
-        self.bot.out_event(eu.msg_all(result, targets, self.module_name))
+        self.irc.msg_all(result, targets)
     
     def show_user_c(self, nick, nickhost, action, targets, message, m):
         given_nickhost = m.group('nickhost')
@@ -48,27 +49,27 @@ class IdentAuth:
         if given_nickhost:
             given_nickhost = given_nickhost.lstrip(' ')
             level = self.get_level(given_nickhost)
-            self.bot.out_event(eu.msg_all(level, targets, self.module_name))
+            self.irc.msg_all(level, targets)
         
         else:
             level = self.get_level(nickhost)
-            self.bot.out_event(eu.msg_all(level, targets, self.module_name))
+            self.irc.msg_all(level, targets)
         
     def bootstrap(self, nick, nickhost, action, targets, message, m):
         try:
             result = self.db.execute('''SELECT * FROM auth''').fetchall()
             if result:
                 self.log.warning('Attempted to bootstrap when module was already boostrapped')
-                self.bot.out_event(eu.msg_all("The authentication is already bootstrapped", targets, self.module_name))
+                self.irc.msg_all("The authentication is already bootstrapped", targets)
             
             else:
                 self.log.info('Bootstrap by user {0} successfull'.format(nick))
-                self.bot.out_event(eu.msg_all(self.add_user(nickhost, 0), targets, self.module_name))
+                self.irc.msg_all(self.add_user(nickhost, 0), targets)
          
         except sqlite3.Error as e:
             self.log.exception("Unable to boostrap auth")
             result = 'Unable to bootstrap due to database error {0}'.format(e.args[0])
-            self.bot.out_event(eu.msg_all(result, targets, self.module_name))
+            self.irc.msg_all(result, targets)
                 
         
     def is_allowed(self, nick, nickhost, level):

@@ -97,7 +97,7 @@ class Network(object):
             self.log.error(u"No sockets left to read/write")
             self.connected = False
             #highest priority message that will get client to attempt to reconnect
-            self.inq.put(eu.error("No sockets left to read/write from", self.module_name, mu.ALL, priority=1))
+            self.inq.put(eu.error("No sockets left to read/write from", priority=1))
 
     def write(self, socket, outqueue):
         '''
@@ -136,11 +136,11 @@ class Network(object):
         
         #go through the cleaned messages and put them through our internal
         #event handling before they reach client (normally used to tweak priorities)
-        for x in clean:
-            for e in self.in_events:
-                e(x)
+        for msg in clean:
+            for event in self.in_events:
+                event(msg)
             
-            self.inq.put(x)
+            self.inq.put(msg)
 
     def send(self, line, encoding="utf-8"):
         #send the message out

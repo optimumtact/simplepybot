@@ -17,7 +17,7 @@ class AliasBot:
         
         self.commands = [
                 bot.command(r"^\w*", self.honk, direct=True),
-                bot.command(r"^!learn (?P<abbr>\S+) as (?P<long>\w\s+)$", self.learn, auth_level = 20),
+                bot.command(r"^!learn (?P<abbr>\S+) as (?P<long>.+)$", self.learn, auth_level = 20),
                 bot.command(r"^!forget (?P<abbr>\S+)", self.forget, auth_level = 20),
                 bot.command(r"^!list_abbr$", self.list_abbrievations, private=True),
                 bot.command(r"^!(?P<abbr>\S+)$", self.retrieve)
@@ -28,7 +28,7 @@ class AliasBot:
         self.module_name = module_name
         self.bot = bot
         self.honk = "HONK"
-        
+        self.irc = bot.irc
         #get a reference to the bot database
         self.db = bot.db
         #set up a table for the module
@@ -54,7 +54,7 @@ class AliasBot:
         '''
         Honk at anyone that highlighted us.
         '''
-        self.bot.msg_all(self.alternate_honk(), targets)
+        self.irc.msg_all(self.alternate_honk(), targets)
 
     def learn(self, nick, nickhost, action, targets, message, m):
         '''
@@ -67,12 +67,13 @@ class AliasBot:
         try:
             self.db.execute('INSERT OR REPLACE INTO alias_module VALUES (?, ?)', [abbr, long])
             self.db.commit()
-            self.bot.msg_all(u'Remembering {0} as {1}'.format(abbr, long), targets)
+            print('irc msg')
+            self.irc.msg_all(u'Remembering {0} as {1}'.format(abbr, long), targets)
         
         except sqlite3.Error as e:
             self.log.exception(u'Could not change/add {0} as {1}'.format(abbr, long))
             self.db.rollback()
-            self.bot.msg_all(u'Could not change/add {0} as {1}'.format(abbr, long), targets)
+            self.irc.msg_all(u'Could not change/add {0} as {1}'.format(abbr, long), targets)
             
             
     def forget(self, nick, nickhost, action, targets, message, m):
@@ -85,14 +86,14 @@ class AliasBot:
             if self.does_exist(abbr):
                 self.db.execute('DELETE FROM alias_module WHERE short = ?', [abbr])
                 self.db.commit()
-                self.bot.msg_all(u'Successfully deleted {0} from database'.format(abbr), targets)
+                self.irc.msg_all(u'Successfully deleted {0} from database'.format(abbr), targets)
             
             else:
-                self.bot.msg_all(u'{0} is not in the database'.format(abbr), targets)
+                self.irc.msg_all(u'{0} is not in the database'.format(abbr), targets)
             
         except sqlite3.Error as e:
             self.log.exception(u'Unable to delete {0}'.format(abbr))
-            self.bot.msg_all(u'Unable to delete {0}'.format(abbr), targets)
+            self.irc.msg_all(u'Unable to delete {0}'.format(abbr), targets)
             
     def retrieve(self, nick, nickhost, action, targets, message, m):
         '''
@@ -104,15 +105,15 @@ class AliasBot:
             result = self.db.execute('SELECT long FROM alias_module WHERE short = ?', [abbr]).fetchone()
             if result:
                 result = result[0]
-                self.bot.msg_all(str(result), targets)
+                self.irc.msg_all(str(result), targets)
             
             else:
                 pass
-                #self.bot.msg_all('No result for abbrievation {0}'.format(abbr), targets)
+                #self.irc.msg_all('No result for abbrievation {0}'.format(abbr), targets)
         
         except sqlite3.Error as e:
             self.log.exception(u"Unable to retrieve {0}".format(abbr))
-            self.bot.msg_all(u'Unable to retrieve {0}'.format(abbr), targets)
+            self.irc.msg_all(u'Unable to retrieve {0}'.format(abbr), targets)
         
 
     def list_abbrievations(self, nick, nickhost, action, targets, message, m):
@@ -122,14 +123,14 @@ class AliasBot:
         try:
             results = self.db.execute('SELECT * FROM alias_module').fetchall()
             if results:
-                self.bot.msg_all(u",".join(map(str, results)), targets)
+                self.irc.msg_all(u",".join(map(str, results)), targets)
             
             else:
-                self.bot.msg_all(u'No stored abbrievations yet', targets)
+                self.irc.msg_all(u'No stored abbrievations yet', targets)
          
         except sqlite3.Error as e:
             self.log.exception(u"Unable to retrieve abbrievations")
-            self.bot.msg_all(u"Unable to retrieve abbrievations", targets)
+            self.irc.msg_all(u"Unable to retrieve abbrievations", targets)
             
     def does_exist(self, abbr):
         '''
