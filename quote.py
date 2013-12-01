@@ -19,7 +19,7 @@ class QuoteBot():
     def __init__(self, bot, module_name='Quotes', log_level = logging.DEBUG):
         self.commands = [
                 bot.command(r"!quote (?P<id>\d+) *$", self.quote_by_id),
-                bot.command(r"!quotes for (?P<nick>\S+)", self.quotes_for_name, private=True),
+                bot.command(r"!quotes for (?P<nick>\S+)", self.quotes_for_name),
                 bot.command(r"^!quote (?P<quote>.+) by (?P<nick>\S+)", self.add_quote),
                 bot.command(r"^!quote (?:\d{2}:\d{2} )?<.?(?P<nick>\S+)> +(?P<quote>.+)", self.add_quote),
                 bot.command(r"^!quotedel (?P<id>\d+)$", self.delete_quote, auth_level=30),

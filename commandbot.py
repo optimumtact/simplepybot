@@ -170,8 +170,15 @@ class CommandBot():
             if not m:
                 return False
 
+            '''
+            auth_level < 0 means do no auth check at all!, this differs from the default
+            which gives most things an auth_level of 100. The only thing that currently uses
+            it is the auth module itself, for bootstrapping authentication. Not recommened for
+            normal use as people may want ignore people who are not in the auth db, and they
+            will change how level 100 checks are managed
+            '''
             if auth_level:
-                if not bot.auth.is_allowed(nick, nickhost, auth_level):
+                if auth_level > 0 and (not bot.auth.is_allowed(nick, nickhost, auth_level)):
                     return True
 
             #call the function
@@ -283,8 +290,8 @@ class CommandBot():
                             break #TODO, should we break, needs a lot more thought
 
                     except Exception as e:
-                        self.log.exception("Error in bot command handler")
-                        self.irc.msg_all("Unable to complete request due to internal error", args)
+                        self.log.exception(u"Error in bot command handler")
+                        self.irc.msg_all(u"Unable to complete request due to internal error", args)
                         
 
                 for module_name in self.modules:

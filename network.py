@@ -74,16 +74,16 @@ class Network(object):
         Uses select to get readable/writable sockets then calls
         read or write on them
         '''
-        readable, writable, exceptional = select.select(self.inputs, self.outputs, self.inputs, 0.1)
+        readable, writable, exceptional = select.select(self.inputs, self.outputs, self.inputs)
         if readable:
             for r in readable:
                 #read from r, placing the messages in the given queue 
-                self.read(r, self.inq)
+                self.handle_input(r, self.inq)
 
         if writable and not self.outq.empty():
             for w in writable:
                 #write to w with items pulled from the given queue
-                self.write(w, self.outq)
+                self.handle_output(w, self.outq)
 
         if exceptional:
             for e in exceptional:
@@ -99,7 +99,7 @@ class Network(object):
             #highest priority message that will get client to attempt to reconnect
             self.inq.put(eu.error("No sockets left to read/write from", priority=1))
 
-    def write(self, socket, outqueue):
+    def handle_output(self, socket, outqueue):
         '''
         Takes an item from the outbound queue and puts it through our internal
         event handlers
@@ -121,7 +121,7 @@ class Network(object):
             #nothing to write
             pass
 
-    def read(self, socket, inqueue):
+    def handle_input(self, socket, inqueue):
         '''
         Pull all possible irc lines from the socket
         parse them and then put them through our internal
@@ -138,8 +138,8 @@ class Network(object):
         #event handling before they reach client (normally used to tweak priorities)
         for msg in clean:
             for event in self.in_events:
-                event(msg)
-            
+                event(msg) #TODO do I really need this?
+
             self.inq.put(msg)
 
     def send(self, line, encoding="utf-8"):
@@ -163,10 +163,15 @@ class Network(object):
         data = d.decode("utf-8", "replace")
 
         '''
-        Read a stream of data, splitting it into messages seperated by \r\n.
+        Read a stream of data, splitting it into messages separated by \r\n.
 
         The last incomplete message (if any) will be stored in the incomplete
         buffer variable to be used in the next read of the data stream
+        
+        Every time we get new data we put the incomplete buffer at the front then we 
+        check if the last 2 chars are the delimiter, in which case we have a full
+        irc msg so we can just split the data. Otherwise we have to split the data
+        and put the last incomplete item on the buffer
         '''
         if self.incomplete_buffer:
             data = self.incomplete_buffer + data
@@ -183,7 +188,7 @@ class Network(object):
 
     def parse_message(self, message):
         '''
-        Utility method turning an ircmsg into a nicely formatted tuple for ease of use.
+        Takes messages from the socket and converts them into internal events
         '''
         m = self.ircmsg.match(message)
 
@@ -210,7 +215,7 @@ class Network(object):
         
         self.log.debug(u"Cleaned message, prefix = {0}, command = {1}, params = {2}, postfix = {3}".format(prefix, command, params, postfix))
         self.log.info(u"<< {0} {1} {2} {3}".format(prefix, command, params, postfix))
-        return eu.irc_msg(command, (command, prefix, params, postfix), self.module_name)
+        return eu.irc_msg(command, (command, prefix, params, postfix))
 
     #Everything below this point are handlers for events from botcore
     def msgs_all(self, msgs, channels):
@@ -302,6 +307,10 @@ class Network(object):
         try:
             self.socket.connect((server,port))
         except socket.error as e:
+            #TODO: is this still necessary
+            #now that we use select
+            #to determine if the socket is ready
+            #for use?
             if e.errno == 10035:
                 pass
             else:
@@ -318,9 +327,9 @@ class Network(object):
     def user(self, nick, realname):
         '''
         Send the USER command with the given realname and nick
-        HOSTNAME and SERVERNAME are given as PYBOT
+        HOSTNAME and SERVERNAME are given as pybot
         '''
-        self.send(u"USER {0} PYBOT PYBOT :{1}".format(nick, realname))
+        self.send(u"USER {0} pybot pybot :{1}".format(nick, realname))
     
     def pong(self, msg):
         self.send(u"PONG {0}".format(msg))

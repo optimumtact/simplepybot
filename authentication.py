@@ -20,10 +20,12 @@ class IdentAuth:
                 bot.command(r'!update user (?P<nickhost>\S+) (?P<level>\d+)', self.update_user_c, auth_level=20),
                 bot.command(r'!delete user (?P<nickhost>\S+)', self.del_user_c, auth_level=20),
                 bot.command(r'!user level(?P<nickhost> \S+)?', self.show_user_c),
-                bot.command(r'!bootstrap auth', self.bootstrap),
+                #Negative auth means, no check at all. This should be the only place it's ever needed!
+                bot.command(r'!bootstrap auth', self.bootstrap, auth_level=-1),
                 ]
 
         self.events = []
+        self.bootstrapped = False
         self.log.info('Finished intialising {0}'.format(module_name))
         
     def add_user_c(self, nick, nickhost, action, targets, message, m):
@@ -57,25 +59,29 @@ class IdentAuth:
         
     def bootstrap(self, nick, nickhost, action, targets, message, m):
         try:
-            result = self.db.execute('''SELECT * FROM auth''').fetchall()
+            result = self.db.execute('SELECT * FROM {0}'.format(self.module_name)).fetchall()
             if result:
                 self.log.warning('Attempted to bootstrap when module was already boostrapped')
                 self.irc.msg_all("The authentication is already bootstrapped", targets)
             
             else:
-                self.log.info('Bootstrap by user {0} successfull'.format(nick))
+                self.log.info(u'Bootstrap by user {0} successfull'.format(nick))
                 self.irc.msg_all(self.add_user(nickhost, 0), targets)
+                self.bootstrapped=True
          
         except sqlite3.Error as e:
-            self.log.exception("Unable to boostrap auth")
-            result = 'Unable to bootstrap due to database error {0}'.format(e.args[0])
+            self.log.exception(u"Unable to boostrap auth")
+            result = u'Unable to bootstrap due to database error {0}'.format(e.args[0])
             self.irc.msg_all(result, targets)
                 
         
     def is_allowed(self, nick, nickhost, level):
+        if not self.bootstrapped:
+            return False
+
         try:
             c = self.db.cursor()
-            c.execute('''SELECT level FROM auth WHERE name=?''', [nickhost])
+            c.execute('SELECT level FROM {0} WHERE name=?'.format(self.module_name), [nickhost])
             result = c.fetchone()
             if result:
                 users_level = result[0]
@@ -93,11 +99,11 @@ class IdentAuth:
         except sqlite3.Error as e:
             self.db.rollback()
             self.log.exception('Unable to check users auth')
-            return 'Unable to check users auth due to database error'
+            return False
     
     def is_user(self, nickhost):
         #search the db for our user to check if they exist before updating
-        result = self.db.execute('SELECT level FROM auth WHERE name=?', [nickhost]).fetchall()
+        result = self.db.execute('SELECT level FROM {0} WHERE name=?'.format(self.module_name), [nickhost]).fetchall()
         if not result:
             self.log.debug('User {0} doesnt exist in db'.format(nickhost))
             return False
@@ -113,7 +119,7 @@ class IdentAuth:
                 return "Unable to update user {0} as it doesn't exist in the database".format(nickhost)
             
             else:
-                self.db.execute('''UPDATE OR ABORT auth SET level=? WHERE name=?''', [level, nickhost])
+                self.db.execute('UPDATE OR ABORT {0} SET level=? WHERE name=?'.format(self.module_name), [level, nickhost])
                 self.db.commit()
                 self.log.info('Successfully updated user {0}, with level {1}'.format(nickhost, level))
                 return 'Successfully updated user {0}'.format(nickhost)
@@ -132,7 +138,7 @@ class IdentAuth:
                 return 'Unable to add user who already exists {0}'.format(nickhost)
                 
             else:
-                self.db.execute('''INSERT INTO auth VALUES(?, ?)''',[nickhost, level])
+                self.db.execute('INSERT INTO {0} VALUES(?, ?)'.format(self.module_name),[nickhost, level])
                 self.db.commit()
                 self.log.info('Successfully added user {0} with level {1}'.format(nickhost, level))
                 return 'Successfully added user {0}'.format(nickhost)
@@ -147,7 +153,7 @@ class IdentAuth:
     def delete_user(self, nickhost):
         try:
             if self.is_user(nickhost):
-                self.db.execute('''DELETE FROM auth WHERE name=?''', [nickhost])
+                self.db.execute('DELETE FROM {0} WHERE name=?'.format(self.module_name), [nickhost])
                 self.db.commit()
                 self.log.info('Succesfully deleted user {0}'.format(nickhost))
                 return 'Succesfully deleted user {0}'.format(nickhost)
@@ -166,7 +172,7 @@ class IdentAuth:
     def get_level(self, nickhost):
         try:
             if self.is_user(nickhost):
-                result = self.db.execute('SELECT level FROM auth WHERE name=?', [nickhost]).fetchone()
+                result = self.db.execute('SELECT level FROM {0} WHERE name=?'.format(self.module_name), [nickhost]).fetchone()
                 if result:
                     result = result[0]
                     self.log.debug('{0} level is {1}'.format(nickhost, result))
