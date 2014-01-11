@@ -11,6 +11,8 @@ import Queue
 import threading
 from authentication import IdentAuth
 from ircmodule import IRC_Wrapper
+import numerics as nu
+from ident import IdentHost
 
 class CommandBot():
     '''
@@ -59,13 +61,15 @@ class CommandBot():
 
         #create a ref to the db connection
         self.db = sqlite3.connect(db_file)
-        
-        #irc module bootstrapped before auth, as auth uses it
+
+        #irc module bootstrapped before auth and ident, as auth uses it
         if not ircmodule:
             self.irc = IRC_Wrapper(self, log_level=log_level)
         
         else:
             self.irc = ircmodule
+        
+        self.ident = IdentHost(self, log_level=log_level)#set up ident
         #if no authmodule is passed through, use the default host/ident module
         if not authmodule:
             self.auth = IdentAuth(self, log_level=log_level)
@@ -92,12 +96,11 @@ class CommandBot():
         #catch also a 432 which is a bad uname
 
         self.events = [
-#               self.event("441", self.change_nick),
-#               self.event("436", self.change_nick),
-                eu.event("001", self.registered_event),
-                eu.event("ERROR", self.reconnect),
-                eu.event("KILL", self.reconnect),
-                eu.event("PING", self.ping),
+                eu.event(nu.RPL_ENDOFMOTD, self.registered_event),
+                eu.event(nu.ERR_NOMOTD, self.registered_event),
+                eu.event(nu.BOT_ERR, self.reconnect),
+                eu.event(nu.BOT_KILL, self.reconnect),
+                eu.event(nu.BOT_PING, self.ping),
                 #TODO: can get privmsg handling as an event?
                 #self.event("PRIVMSG", self.handle_priv),
                 ]
@@ -178,8 +181,8 @@ class CommandBot():
             will change how level 100 checks are managed
             '''
             if auth_level:
-                if auth_level > 0 and (not bot.auth.is_allowed(nick, nickhost, auth_level)):
-                    return True
+                if auth_level > 0 and not bot.auth.is_allowed(nick, nickhost, auth_level):
+                    return True #Auth failed but was command
 
             #call the function
             func(nick, nickhost, action, args, message, m)
@@ -279,14 +282,14 @@ class CommandBot():
             #this is the cleaned data from an irc msg
             #i.e PRIVMSG francis!francis@localhost [#bots] "hey all"
             #if a priv message we first pass it through the command handlers
-            if m_event.type == "PRIVMSG":
+            if m_event.type == nu.BOT_PRIVMSG:
                 was_event=True
                 #unpack the data!
                 action, source, args, message = m_event.data
                 for command in self.commands:
                     try:
                         if command(source, action, args, message):
-                            action ="COMMAND" #we set the action to command so valid commands can be identified by modules
+                            action = nu.BOT_COMM #we set the action to command so valid commands can be identified by modules
                             break #TODO, should we break, needs a lot more thought
 
                     except Exception as e:
@@ -299,7 +302,7 @@ class CommandBot():
                     for command in module.commands:
                         try:
                             if command(source, action, args, message):
-                                action = "COMMAND"
+                                action = nu.BOT_COMM
                                 break
 
                         except Exception as e:
@@ -411,8 +414,10 @@ class CommandBot():
 
     def join(self, channel):
         if self.registered:
-            event = eu.join(channel)
-            self.out_event(event)
+            #send join event
+            self.irc.join(channel)
+            #tell the ident module we joined this channel
+            self.ident.join_channel(channel)
             if not(channel in self.channels):
                 self.channels.append(channel)
         else:

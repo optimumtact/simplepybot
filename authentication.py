@@ -1,6 +1,5 @@
 import sqlite3
 import logging
-import event_util as eu
 
 class IdentAuth:
     def __init__(self, bot, module_name='identauth', log_level = logging.INFO):
@@ -26,6 +25,10 @@ class IdentAuth:
 
         self.events = []
         self.bootstrapped = False
+        #Check we are bootstrapped
+        if self.has_users():
+            self.bootstrapped = True
+
         self.log.info('Finished intialising {0}'.format(module_name))
         
     def add_user_c(self, nick, nickhost, action, targets, message, m):
@@ -59,8 +62,8 @@ class IdentAuth:
         
     def bootstrap(self, nick, nickhost, action, targets, message, m):
         try:
-            result = self.db.execute('SELECT * FROM {0}'.format(self.module_name)).fetchall()
-            if result:
+           
+            if self.has_users():
                 self.log.warning('Attempted to bootstrap when module was already boostrapped')
                 self.irc.msg_all("The authentication is already bootstrapped", targets)
             
@@ -77,6 +80,7 @@ class IdentAuth:
         
     def is_allowed(self, nick, nickhost, level):
         if not self.bootstrapped:
+            print('not bootstrapped')
             return False
 
         try:
@@ -84,6 +88,8 @@ class IdentAuth:
             c.execute('SELECT level FROM {0} WHERE name=?'.format(self.module_name), [nickhost])
             result = c.fetchone()
             if result:
+                if level == 100:
+                    return True #level 100 means no auth required
                 users_level = result[0]
                 self.log.debug('auth check for {0} requires <= {1} and has {2}'.format(nick, level, users_level))
                 return users_level <= level
@@ -94,6 +100,7 @@ class IdentAuth:
                     return True #level 100 (default) means no auth required
                     
                 else:
+                    print('fail')
                     return False
         
         except sqlite3.Error as e:
@@ -111,7 +118,16 @@ class IdentAuth:
         else:
             self.log.debug('User {0} does exist in db'.format(nickhost))
             return True
+
+    def has_users(self):
+        try:
+            result  = self.db.execute('SELECT * FROM {0}'.format(self.module_name)).fetchall()
+            return len(result)
         
+        except sqlite3.Error as e:
+            self.log.exception('Unable to check if we have users')
+            return 0
+
     def update_user(self, nickhost, level):
         try:
             if not self.is_user(nickhost):
@@ -189,21 +205,8 @@ class IdentAuth:
         except sqlite3.Error as e:
             self.log.exception('Could not get level for {0}'.format(nickhost))
             return 'Could not get level for {0}'.format(nickhost)
-            
-    def close(self):
-        #we don't need to clean up anything special
-        pass
-    
-    def syntax(self):
-        return  '''
-                Authentication module supports
-                !bootstrap auth
-                !add user {hostname} {level}
-                !update user {hostname} {level}
-                !delete user {hostname}
-                !user level {hostname}
-                '''
-                
+
+
 class DummyBot:
     def __init__(self):
         self.db = sqlite3.connect(':memory:')

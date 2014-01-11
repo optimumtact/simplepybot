@@ -9,9 +9,6 @@ class IRC_Wrapper:
     that is used to talk to the network thread, basically it abstracts
     out the queue calls to provide a less verbose method of calling
     the irc methods
-    
-    TODO: I want to move the caching of requests out to this module
-    as it seems more logical to have it here
     '''
     
     def __init__(self, bot, module_name = "irc", log_level = logging.DEBUG):
@@ -164,4 +161,17 @@ class IRC_Wrapper:
         kwargs:
             priority = how quickly to process the event
         '''
-        self.bout.out_event(eu.error(msg, priority))
+        self.bot.out_event(eu.error(msg, priority))
+        
+    def name(self, channel=None, priority=3):
+        '''
+        Send the IRC NAME command to the server, passing a 
+        list of channels if given
+        '''
+        self.bot.out_event(eu.name(channel, priority))
+    
+    def who(self, param=None, priority=3):
+        '''
+        Send the IRC WHO command with given parameter
+        '''
+        self.bot.out_event(eu.who(param, priority))

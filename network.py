@@ -6,6 +6,7 @@ import logging
 import Queue as q
 import event_util as eu
 import time
+import numerics as nu
 
 class Network(object):
     '''
@@ -31,35 +32,40 @@ class Network(object):
         #priority queues with data in form of (priority, data)
         self.inq = inqueue
         self.outq = outqueue
-        
+
         #list of our sockets
         self.inputs = [self.socket]
         self.outputs = [self.socket]
-        
-        #Events coming out of the network - mostly used to alter priorities for things
+
+        #Events coming out of the network - unused for now
         self.in_events = []
+
         #Event coming in from the ircbot core
-        self.out_events = [eu.event("MSGS_ALL", self.msgs_all),
-                                eu.event("MSGS", self.msgs),
-                                eu.event("MSG_ALL", self.msg_all),
-                                eu.event("CONN", self.connect),
-                                eu.event("USER", self.user),
-                                eu.event("NICK", self.nick),
-                                eu.event("JOIN", self.join),
-                                eu.event("QUIT", self.quit),
-                                eu.event("KILL", self.kill),
-                                eu.event("PONG", self.pong),
-                                ]
-        self.log.info("Network intialised")
+        self.out_events =   [
+                            eu.event(nu.BOT_MSG, self.msg),
+                            eu.event(nu.BOT_MSGS_ALL, self.msgs_all),
+                            eu.event(nu.BOT_MSGS, self.msgs),
+                            eu.event(nu.BOT_MSG_ALL, self.msg_all),
+                            eu.event(nu.BOT_CONN, self.connect),
+                            eu.event(nu.BOT_USER, self.user),
+                            eu.event(nu.BOT_NICK, self.nick),
+                            eu.event(nu.BOT_JOIN_CHAN, self.join),
+                            eu.event(nu.BOT_QUIT, self.quit),
+                            eu.event(nu.BOT_KILL, self.kill),
+                            eu.event(nu.BOT_PONG, self.pong),
+                            eu.event(nu.BOT_NAMES, self.names),
+                            eu.event(nu.BOT_WHO, self.who),
+                            ]
+        self.log.info('network initialised')
 
     def loop(self):
-        self.log.debug("Looping started")
+        self.log.debug('Looping started')
         while self.is_running:
             if not self.connected:
                 try:
                     m_event = self.outq.get(False)
-                    if m_event.type == "CONN":
-                        self.log.debug("Connection event!")
+                    if m_event.type == nu.BOT_CONN:
+                        self.log.debug('Connection event!')
                         self.connect(*m_event.data)
                     else:
                         pass
@@ -67,7 +73,7 @@ class Network(object):
                     pass
             else:
                 self.poll_sockets()
-        self.log.info("network ending")
+        self.log.info('network ending')
 
     def poll_sockets(self):
         '''
@@ -88,16 +94,16 @@ class Network(object):
         if exceptional:
             for e in exceptional:
                 #TODO can we get the error to log as well?
-                self.log.error(u"Exceptional socket {0}".format(e.getpeername()))
+                self.log.error(u'Exceptional socket {0}'.format(e.getpeername()))
                 self.inputs.remove(e)
                 self.outputs.remove(e)
         
         #if we lost all our sockets
         if not self.inputs or not self.outputs:
-            self.log.error(u"No sockets left to read/write")
+            self.log.error(u'No sockets left to read/write')
             self.connected = False
             #highest priority message that will get client to attempt to reconnect
-            self.inq.put(eu.error("No sockets left to read/write from", priority=1))
+            self.inq.put(eu.error('No sockets left to read/write from', priority=1))
 
     def handle_output(self, socket, outqueue):
         '''
@@ -107,7 +113,7 @@ class Network(object):
         try:
             #grab an item from the outbound queue
             m_event = self.outq.get(False)
-            self.log.debug(u"Outwards event, {0}, data {1}".format(m_event.type, m_event.data))
+            self.log.debug(u'Outwards event, {0}, data {1}'.format(m_event.type, m_event.data))
             #put them through our outbound event handlers
             triggered = False
             for e in self.out_events:
@@ -115,7 +121,7 @@ class Network(object):
                     triggered = True
 
             if not triggered:
-                self.log.debug(u"Unhandled outbound event {0} data:{1}".format(m_event.type, m_event.data))
+                self.log.debug(u'Unhandled outbound event {0} data:{1}'.format(m_event.type, m_event.data))
 
         except q.Empty:
             #nothing to write
@@ -142,11 +148,11 @@ class Network(object):
 
             self.inq.put(msg)
 
-    def send(self, line, encoding="utf-8"):
+    def send(self, line, encoding='utf-8'):
         #send the message out
         #send takes the form SENDOUT [lines..]
-        self.log.info(u">> {0}".format(line))
-        line = line.replace("\r", " ").replace("\n", " ") + "\r\n"
+        self.log.info(u'>> {0}'.format(line))
+        line = line.replace('\r', ' ').replace('\n', ' ') + '\r\n'
         totalsent = 0
         while totalsent < len(line):
             sent = self.socket.send(line[totalsent:].encode(encoding))
@@ -160,7 +166,7 @@ class Network(object):
         buffer_size = self.buffer_size
         d = self.socket.recv(buffer_size)
 
-        data = d.decode("utf-8", "replace")
+        data = d.decode('utf-8', 'replace')
 
         '''
         Read a stream of data, splitting it into messages separated by \r\n.
@@ -175,13 +181,13 @@ class Network(object):
         '''
         if self.incomplete_buffer:
             data = self.incomplete_buffer + data
-            incomplete_buffer = ""
+            incomplete_buffer = ''
 
-        if data[-2:] is "\r\n":
-            split_data = data.split("\r\n")
+        if data[-2:] is '\r\n':
+            split_data = data.split('\r\n')
 
         else:
-            split_data = data.split("\r\n")
+            split_data = data.split('\r\n')
             self.incomplete_buffer = split_data.pop(-1)
 
         return split_data
@@ -193,28 +199,28 @@ class Network(object):
         m = self.ircmsg.match(message)
 
         if not m:
-            self.log.warn(u"Couldn\"t match message {0}".format(message))
+            self.log.warn(u'Couldn\'t match message {0}'.format(message))
             return None
 
-        postfix = m.group("postfix")
+        postfix = m.group('postfix')
         if postfix:
-            postfix = postfix.strip(" ")
-            postfix = postfix.lstrip(":")
+            postfix = postfix.strip(' ')
+            postfix = postfix.lstrip(':')
 
-        command = m.group("command")
+        command = m.group('command')
 
-        prefix = m.group("prefix")
+        prefix = m.group('prefix')
         if prefix:
-            prefix = prefix.strip(" ")
-            prefix = prefix.lstrip(":")
+            prefix = prefix.strip(' ')
+            prefix = prefix.lstrip(':')
 
-        params = m.group("params")
+        params = m.group('params')
         if params:
-            params = params.strip(" ")
-            params = params.split(" ")
+            params = params.strip(' ')
+            params = params.split(' ')
         
-        self.log.debug(u"Cleaned message, prefix = {0}, command = {1}, params = {2}, postfix = {3}".format(prefix, command, params, postfix))
-        self.log.info(u"<< {0} {1} {2} {3}".format(prefix, command, params, postfix))
+        self.log.debug(u'Cleaned message, prefix = {0}, command = {1}, params = {2}, postfix = {3}'.format(prefix, command, params, postfix))
+        self.log.info(u'<< {0} {1} {2} {3}'.format(prefix, command, params, postfix))
         return eu.irc_msg(command, (command, prefix, params, postfix))
 
     #Everything below this point are handlers for events from botcore
@@ -249,7 +255,7 @@ class Network(object):
         later on it might be improved by finding the nearest space to cut on
         under the limit
         '''
-        msg = u"PRIVMSG {0} :{1}".format(channel, message)
+        msg = u'PRIVMSG {0} :{1}'.format(channel, message)
         if len(msg) > 512:
             sending = msg[:510]
             remainder = msg[510:]
@@ -271,17 +277,17 @@ class Network(object):
         Join a channel.
         channel: the channel to join
         '''      
-        self.send(u"JOIN {0}".format(channel))
+        self.send(u'JOIN {0}'.format(channel))
 
     def quit(self, message):
         '''
         Disconnects from a server with a optional QUIT message.
         '''
         if message:
-            self.send(u"QUIT :{0}".format(message))
+            self.send(u'QUIT :{0}'.format(message))
         
         else:
-            self.send(u"QUIT")
+            self.send(u'QUIT')
     
     def kill(self):
         '''
@@ -297,7 +303,7 @@ class Network(object):
         '''
         if message:
             self.msg(message, channel)
-        self.send(u"PART {0}".format(channel))
+        self.send(u'PART {0}'.format(channel))
 
     def connect(self, server, port):
         '''
@@ -322,14 +328,34 @@ class Network(object):
         '''
         Send the nick command with the given nick
         '''
-        self.send(u"NICK {0}".format(nick))
+        self.send(u'NICK {0}'.format(nick))
 
     def user(self, nick, realname):
         '''
         Send the USER command with the given realname and nick
         HOSTNAME and SERVERNAME are given as pybot
         '''
-        self.send(u"USER {0} pybot pybot :{1}".format(nick, realname))
+        self.send(u'USER {0} pybot pybot :{1}'.format(nick, realname))
     
     def pong(self, msg):
-        self.send(u"PONG {0}".format(msg))
+        self.send(u'PONG {0}'.format(msg))
+        
+    def names(self, channels):
+        '''
+        Send the NAMES command with the given set of channels to call
+        for
+        '''
+        if channels:
+            self.send(u'NAMES {0}'.format(','.join(channels)))
+        else:
+            self.send(u'NAMES')
+    
+    def who(self, param):
+        '''
+        send the Who message with given param
+        '''
+        if param:
+            self.send(u'WHO {0}'.format(param))
+        else:
+            self.send(u'WHO')
+
