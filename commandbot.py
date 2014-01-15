@@ -13,6 +13,7 @@ from authentication import IdentAuth
 from ircmodule import IRC_Wrapper
 import numerics as nu
 from ident import IdentHost
+from identcontrol import IdentControl
 
 class CommandBot():
     '''
@@ -41,7 +42,7 @@ class CommandBot():
         self.inq = Queue.PriorityQueue()
         self.outq = Queue.PriorityQueue()
         #Set up network class
-        net = Network(self.inq, self.outq, self.log_name, log_level = log_level)
+        net = Network(self.inq, self.outq, self.log_name)
         #Despatch the thread
         self.log.debug("Dispatching network thread")
         thread = threading.Thread(target=net.loop)
@@ -64,15 +65,17 @@ class CommandBot():
 
         #irc module bootstrapped before auth and ident, as auth uses it
         if not ircmodule:
-            self.irc = IRC_Wrapper(self, log_level=log_level)
+            self.irc = IRC_Wrapper(self)
         
         else:
             self.irc = ircmodule
         
         self.ident = IdentHost(self, log_level=log_level)#set up ident
+        self.identcontrol = IdentControl(self) # module for controlling it
+
         #if no authmodule is passed through, use the default host/ident module
         if not authmodule:
-            self.auth = IdentAuth(self, log_level=log_level)
+            self.auth = IdentAuth(self)
         
         else:
             self.auth = authmodule

@@ -6,59 +6,33 @@ import event_util as eu
 class IdentHost:
     def __init__(self, bot, module_name='identhost', log_level = logging.INFO):
         self.bot = bot
-        self.log = logging.getLogger('{0}.{1}'.format(bot.log_name, module_name))
+        self.log = logging.getLogger(u'{0}.{1}'.format(bot.log_name, module_name))
         self.log.setLevel(log_level)
         self.irc = bot.irc
         self.module_name = module_name
         self.channels = []
-        self.nickmap = defaultdict(list)
-        self.hostmap = defaultdict(list)
-        self.channel2nick = defaultdict(list)
-        self.nick2channel = defaultdict(list)
-        self.commands = [
-                        self.bot.command('!nick (?P<nick>.*)', self.find_nick),
-                        self.bot.command('!nickhost (?P<nickhost>.*)', self.find_nick_host),
-                        self.bot.command('!users (?P<chan>.*)', self.find_users_in_channel),
-                        self.bot.command('!channels (?P<nick>.*)', self.find_channels_user_in),
-                        ]
+        self.nickmap = defaultdict(str)
+        self.hostmap = defaultdict(str)
+        self.channel2user = defaultdict(list)
+        self.user2channel = defaultdict(list)
+        self.commands = []
         self.events =   [
                         eu.event(nu.BOT_JOIN, self.user_join),
                         eu.event(nu.BOT_PART, self.user_part),
                         eu.event(nu.RPL_WHOREPLY, self.users_who),
                         eu.event(nu.BOT_QUIT, self.user_quit),
+                        eu.event(nu.BOT_NICK, self.user_changed_nick),
                         ]
         self.bot.add_module(module_name, self)
-    
-    def find_nick(self, nick, nickhost, action, targets, message, m):
-        nick = m.group('nick')
-        result = self.user_of_nick(nick)
-        if self.is_user_in_channel(result, targets[0]):
-            self.irc.msg_all(result, targets)
-        else:
-            self.irc.msg_all('user not in this channel', targets)
 
-    def find_nick_host(self, nick, nickhost, action, targets, message, m):
-        nickhost = m.group('nickhost')
-        result = self.user_of_nick(nickhost)
-        self.irc_msg_all(result, targets)
-
-    def find_users_in_channel(self, nick, nickhost, action, targets, message, m):
-        chan = m.group('chan')
-        result = self.users_in_channel(chan)
-        self.irc.msg_all(','.join(result), targets)
-    
-    def find_channels_user_in(self, nick, nickhost, action, targets, message, m):
-        nick = m.group('nick')
-        user = self.user_of_nick(nick)
-        channels = self.channels_user_in(user)
-        self.irc.msg_all(','.join(channels), targets)
 
     def is_user(self, user):
         '''
         return true if there are mappings already present for this nickhost
         otherwise false
         '''
-        return self.hostmap[user]
+        self.log.debug(u'Checked if user {0} is in my identity map'.format(user))
+        return self.hostmap[user] != ''
 
     def add_user(self, nick, user, channel):
         '''
@@ -67,9 +41,11 @@ class IdentHost:
         #store mapping between nick and user
         self.nickmap[nick] = user
         self.hostmap[user] = nick
+        self.log.debug(u'Adding user mapping {1}=>{0}'.format(user, nick, channel))
         if not self.is_user_in_channel(user, channel):
-            self.channel2nick[channel].append(user)
-            self.nick2channel[user].append(channel)
+            self.log.debug(u'Adding user {0} to channel {1}'.format(user, channel))
+            self.channel2user[channel].append(user)
+            self.user2channel[user].append(channel)
 
     def delete_user(self, user):
         '''
@@ -79,43 +55,54 @@ class IdentHost:
         #remove appropriate mappings
         del self.nickmap[nick]
         del self.hostmap[user]
-        for channel in self.nick2channel[user]:
-            self.channel2nick[channel].remove(user)
+        self.log.debug('Removing user mapping {1}=>{0}'.format(user, nick))
+        for channel in self.user2channel[user]:
+            self.log.debug(u'Removing {0} from channel {1}'.format(user, channel))
+            self.channel2user[channel].remove(user)
         
-        del self.nick2channel[user]
+        del self.user2channel[user]
 
+    def change_user_nick(self, user, newnick):
+        oldnick = self.nick_of_user(user)
+        self.log.debug(u'Changing {0}=>{1} to {2}=>{1}'.format(oldnick, user, newnick))
+        self.hostmap[user] = newnick
+        del self.nickmap[oldnick]
+        self.nickmap[newnick] = user
+            
     def remove_user_from_channel(self, user, channel):
         '''
         Unmap user from this channel
         '''
-        self.channel2nick[channel].remove(user)
-        self.nick2channel[user].remove(channel)
+        self.log.debug('Removing {0} from {1}'.format(user, channel))
+        self.channel2user[channel].remove(user)
+        self.user2channel[user].remove(channel)
 
     def add_user_to_channel(self, user, channel):
         '''
         Map user to this channel
         '''
         if not self.is_user_in_channel(user, channel):
-            self.channel2nick[channel].append(user)
-            self.nick2channel[user].append(channel)
+            self.log.debug(u'Adding user {0} to {1}'.format(user, channel))
+            self.channel2user[channel].append(user)
+            self.user2channel[user].append(channel)
 
     def is_user_in_channel(self, user, channel):
         '''
         Returns true if the user is in that channel
         '''
-        return channel in self.nick2channel[user]
+        return channel in self.user2channel[user]
 
     def channels_user_in(self, user):
         '''
         Return list of all channels this user is in
         '''
-        return self.nick2channel[user]
+        return self.user2channel[user]
 
     def users_in_channel(self, channel):
         '''
         Return list of all users in a channel
         '''
-        return self.channel2nick[channel]
+        return self.channel2user[channel]
 
     def in_channel(self, channel):
         '''
@@ -133,15 +120,17 @@ class IdentHost:
         '''
         Add channel to list of channels bot is in
         '''
+        self.log.debug(u'Adding {0} to list of channels im in'.format(channel))
         self.channels.append(channel)
 
     def remove_channel(self, channel):
         '''
         Remove channel from list of channels bot is in
         '''
+        self.log.debug(u'Removing {0} from list of channels im in'.format(channel))
         self.channels.remove[channel]
 
-    def user_nick(self, user):
+    def nick_of_user(self, user):
         '''
         return the nick this user is using right now
         '''
@@ -153,6 +142,18 @@ class IdentHost:
         '''
         return self.nickmap[nick]
 
+    '''
+    Event handlers past this point
+    '''
+    def user_changed_nick(self, command, prefix, params, postfix):
+        '''
+        User changed their nick, update the mapping
+        '''
+        nick, nickhost = prefix.split('!')
+        newnick = postfix
+        self.log.debug(u'User {0} changed nick to {1}'.format(nickhost, newnick))
+        self.change_user_nick(nickhost, newnick)
+        
     def user_join(self, command, prefix, params, postfix):
         '''
         A new user has joined a channel, store their hostname - nick mapping in the appropriate location
@@ -204,7 +205,11 @@ class IdentHost:
         we just left this channel, nuke the mappings
         '''
         if self.in_channel(channel):
+            self.log.debug(u'Parting channel {0}'.format(channel))
             self.remove_channel(channel)
+            for user in self.channel2user:
+                self.remove_user_from_channel(user, channel)
+            del (self.channel2user[channel])
         else:
             self.log.warning(u'Just left channel {0} but was never marked as in it'.format(channel))
 
@@ -212,6 +217,7 @@ class IdentHost:
         '''
         We just joined a channel, deal with the list of users we are getting
         '''
+        self.log.debug(u'Joined channel {0}'.format(channel))
         self.add_channel(channel)
         self.irc.who(channel)#WE'RE GETTING THE NAMES MAN
         pass
@@ -225,6 +231,7 @@ class IdentHost:
         nick = params[5]
         channel = params[1]
         nickhost = '{0}@{1}'.format(params[2], params[3])
+        self.log.debug(u'Who response from {0}=>{1}'.format(nick, nickhost))
         if not self.is_user(nickhost):
             self.add_user(nick, nickhost, channel)
         else:
