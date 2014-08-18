@@ -313,11 +313,9 @@ class Network(object):
         try:
             self.socket.connect((server,port))
         except socket.error as e:
-            #TODO: is this still necessary
-            #now that we use select
-            #to determine if the socket is ready
-            #for use?
-            if e.errno == 10035:
+            if e.errno == 115:
+                pass
+            elif e.errno == 10035:
                 pass
             else:
                 raise e

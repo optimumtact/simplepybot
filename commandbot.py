@@ -258,6 +258,7 @@ class CommandBot():
         while self.is_running:
             self.logic()
             time.sleep(.1)
+        self.cleanup()
         self.log.info("Bot ending")
 
     def logic(self):
@@ -376,7 +377,6 @@ class CommandBot():
         End this bot, closing each module and quitting the server
         '''
         self.log.info("Shutting down bot")
-        self.db.close()
         for name in self.modules:
             module = self.modules[name]
             try:
@@ -387,6 +387,14 @@ class CommandBot():
         self.irc.quit("Goodbye for now")
         self.irc.kill()
         self.is_running=False
+
+    def cleanup(self):
+        '''
+        Called after all modules are closed and no more events to be processed, cleanup any final
+        bits and pieces
+        '''
+        self.log.info('Cleaning up after myself')
+        self.db.close()
 
     def mute(self, nick, nickhost, action, targets, message, m):
         '''
