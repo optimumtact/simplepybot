@@ -105,7 +105,7 @@ class AliasBot:
             result = self.db.execute('SELECT long FROM alias_module WHERE short = ?', [abbr]).fetchone()
             if result:
                 result = result[0]
-                self.irc.msg_all(str(result), targets)
+                self.irc.msg_all((result), targets)
             
             else:
                 pass
