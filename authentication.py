@@ -4,6 +4,7 @@ import logging
 class IdentAuth:
     def __init__(self, bot, module_name='identauth', log_level = logging.INFO):
         self.bot = bot
+        self.ident = bot.ident
         self.log = logging.getLogger(bot.log_name+'.'+module_name)
         self.log.setLevel(log_level)
         self.db = bot.db
@@ -15,10 +16,12 @@ class IdentAuth:
         self.db.commit()
         self.bot.add_module(module_name, self)
         self.commands = [
-                bot.command(r'!add user (?P<nickhost>\S+) (?P<level>\d+)', self.add_user_c, auth_level=20),
-                bot.command(r'!update user (?P<nickhost>\S+) (?P<level>\d+)', self.update_user_c, auth_level=20),
-                bot.command(r'!delete user (?P<nickhost>\S+)', self.del_user_c, auth_level=20),
-                bot.command(r'!user level(?P<nickhost> \S+)?', self.show_user_c),
+                bot.command(r'!add user (?P<nick>\S+) (?P<level>\d+)', self.add_user_c, auth_level=20),
+                bot.command(r'!update user (?P<nick>\S+) (?P<level>\d+)', self.update_user_c, auth_level=20),
+                bot.command(r'!delete user (?P<nick>\S+)', self.del_user_c, auth_level=20),
+                bot.command(r'!user level (?P<nick>\S+)', self.show_user_c),
+                bot.command(r'!ignore user (?P<nick>\S+)', self.ignore_user_c, auth_level=20),
+                bot.command(r'!unignore user (?P<nick>\S+)', self.unignore_user_c, auth_level=20),
                 #Negative auth means, no check at all. This should be the only place it's ever needed!
                 bot.command(r'!bootstrap auth', self.bootstrap, auth_level=-1),
                 ]
@@ -29,43 +32,84 @@ class IdentAuth:
         if self.has_users():
             self.bootstrapped = True
 
-        self.log.info('Finished intialising {0}'.format(module_name))
+        self.log.info(u'Finished intialising {0}'.format(module_name))
         
     def add_user_c(self, nick, nickhost, action, targets, message, m):
-        nickhost = m.group('nickhost')
-        level = int(m.group('level'))
-        result = self.add_user(nickhost, level)
-        self.irc.msg_all(result, targets)
+        nick = m.group('nick')
+        nickhost = self.ident.user_of_nick(nick)
+        if(nickhost):
+            level = int(m.group('level'))
+            result = self.add_user(nickhost, level)
+            self.irc.msg_all(result, targets)
+        else:
+            self.irc.msg_all(u'No known user by the nick {0}'.format(nick), targets)
+            self.log.debug(u'host mapping not found for nickname {0}'.format(nick))
     
     def update_user_c(self, nick, nickhost, action, targets, message, m):
-        nickhost = m.group('nickhost')
-        level = int(m.group('level'))
-        result = self.update_user(nickhost, level)
-        self.irc.msg_all(result, targets)
-    
-    def del_user_c(self, nick, nickhost, action, targets, message, m):
-        nickhost = m.group('nickhost')
-        result = self.delete_user(nickhost)
-        self.irc.msg_all(result, targets)
-    
-    def show_user_c(self, nick, nickhost, action, targets, message, m):
-        given_nickhost = m.group('nickhost')
-        level = 100
-        if given_nickhost:
-            given_nickhost = given_nickhost.lstrip(' ')
-            level = self.get_level(given_nickhost)
-            self.irc.msg_all(level, targets)
-        
+        nick = m.group('nick')
+        nickhost = self.ident.user_of_nick(nick)
+        if(nickhost):
+            level = int(m.group('level'))
+            result = self.update_user(nickhost, level)
+            self.irc.msg_all(result, targets)
         else:
+            self.irc.msg_all(u'No known user by the nick {0}'.format(nick), targets)
+            self.log.debug(u'host mapping not found for nickname {0}'.format(nick))
+            
+    def del_user_c(self, nick, nickhost, action, targets, message, m):
+        nick = m.group('nick')
+        nickhost = self.ident.user_of_nick(nick)
+        if(nickhost):
+            result = self.delete_user(nickhost)
+            self.irc.msg_all(result, targets)
+        else:
+            self.irc.msg_all(u'No known user by the nick {0}'.format(nick), targets)
+            self.log.debug(u'host mapping not found for nickname {0}'.format(nick))
+            
+    def show_user_c(self, nick, nickhost, action, targets, message, m):
+        nick = m.group('nick')
+        nickhost = self.ident.user_of_nick(nick)
+        if(nickhost):
+            level = 100
             level = self.get_level(nickhost)
             self.irc.msg_all(level, targets)
-        
+        else:
+            self.irc.msg_all(u'No known user by the nick {0}'.format(nick), targets)
+            self.log.debug(u'host mapping not found for nickname {0}'.format(nick))
+            
+    def ignore_user_c(self, nick, nickhost, action, targets, message, m):
+        nick = m.group('nick')
+        nickhost = self.ident.user_of_nick(nick)
+        if(nickhost):
+            level = 101 #Higher than currently max, so will be ignored
+            if(self.is_user(nickhost)):
+                result = self.update_user(nickhost, level)
+                self.irc.msg_all(u'User {0} is now being ignored'.format(nick), targets)
+            else:
+                result = self.add_user(nickhost, level)
+                self.irc.msg_all(u'User {0} is now being ignored'.format(nick), targets)
+                
+        else:
+            self.irc.msg_all(u'No known user by the nick {0}'.format(nick), targets)
+            self.log.debug(u'host mapping not found for nickname {0}'.format(nick))
+
+    def unignore_user_c(self, nick, nickhost, action, targets, message, m):
+        nick = m.group('nick')
+        nickhost = self.ident.user_of_nick(nick)
+        if(nickhost):
+            result = self.delete_user(nickhost)
+            self.irc.msg_all(u'User {0} is now being unignored'.format(nick), targets)
+                
+        else:
+            self.irc.msg_all(u'No known user by the nick {0}'.format(nick), targets)
+            self.log.debug(u'host mapping not found for nickname {0}'.format(nick))
+
     def bootstrap(self, nick, nickhost, action, targets, message, m):
         try:
            
             if self.has_users():
-                self.log.warning('Attempted to bootstrap when module was already boostrapped')
-                self.irc.msg_all("The authentication is already bootstrapped", targets)
+                self.log.warning(u'Attempted to bootstrap when module was already boostrapped')
+                self.irc.msg_all(u"The authentication is already bootstrapped", targets)
             
             else:
                 self.log.info(u'Bootstrap by user {0} successfull'.format(nick))
@@ -80,7 +124,7 @@ class IdentAuth:
         
     def is_allowed(self, nick, nickhost, level):
         if not self.bootstrapped:
-            print('not bootstrapped')
+            self.log.debug(u'auth check when not bootstrapped')
             return False
 
         try:
@@ -88,35 +132,28 @@ class IdentAuth:
             c.execute('SELECT level FROM {0} WHERE name=?'.format(self.module_name), [nickhost])
             result = c.fetchone()
             if result:
-                if level == 100:
-                    return True #level 100 means no auth required
                 users_level = result[0]
-                self.log.debug('auth check for {0} requires <= {1} and has {2}'.format(nick, level, users_level))
-                return users_level <= level
-            
             else:
-                self.log.warning('User auth check, but user {0} not in db'.format(nickhost))
-                if level == 100:
-                    return True #level 100 (default) means no auth required
-                    
-                else:
-                    print('fail')
-                    return False
+                users_level = 100
+                self.log.debug(u'User auth check, but user {0} not in db - set to 100'.format(nickhost))
+                
+            self.log.debug(u'auth check for {0} requires <= {1} and has {2}'.format(nick, level, users_level))
+            return users_level <= level
         
         except sqlite3.Error as e:
             self.db.rollback()
-            self.log.exception('Unable to check users auth')
+            self.log.exception(u'Unable to check users auth')
             return False
     
     def is_user(self, nickhost):
         #search the db for our user to check if they exist before updating
         result = self.db.execute('SELECT level FROM {0} WHERE name=?'.format(self.module_name), [nickhost]).fetchall()
         if not result:
-            self.log.debug('User {0} doesnt exist in db'.format(nickhost))
+            self.log.debug(u'User {0} doesnt exist in db'.format(nickhost))
             return False
         
         else:
-            self.log.debug('User {0} does exist in db'.format(nickhost))
+            self.log.debug(u'User {0} does exist in db'.format(nickhost))
             return True
 
     def has_users(self):
@@ -125,45 +162,45 @@ class IdentAuth:
             return len(result)
         
         except sqlite3.Error as e:
-            self.log.exception('Unable to check if we have users')
+            self.log.exception(u'Unable to check if we have users')
             return 0
 
     def update_user(self, nickhost, level):
         try:
             if not self.is_user(nickhost):
-                self.log.warning("Can't update a user that doesn't exist: {0}".format(nickhost))
-                return "Unable to update user {0} as it doesn't exist in the database".format(nickhost)
+                self.log.warning(u"Can't update a user that doesn't exist: {0}".format(nickhost))
+                return u"Unable to update user {0} as it doesn't exist in the database".format(nickhost)
             
             else:
                 self.db.execute('UPDATE OR ABORT {0} SET level=? WHERE name=?'.format(self.module_name), [level, nickhost])
                 self.db.commit()
-                self.log.info('Successfully updated user {0}, with level {1}'.format(nickhost, level))
-                return 'Successfully updated user {0}'.format(nickhost)
+                self.log.info(u'Successfully updated user {0}, with level {1}'.format(nickhost, level))
+                return u'Successfully updated user {0}'.format(nickhost)
             
         except sqlite3.Error as e:
             self.db.rollback()
-            self.log.error('Unable to update user {0} due to database error{1}'.format(nickhost,
+            self.log.error(u'Unable to update user {0} due to database error{1}'.format(nickhost,
                                                                                        e.args[0]))
-            return 'Unable to update user {0} due to database error{1}'.format(nickhost,
+            return u'Unable to update user {0} due to database error{1}'.format(nickhost,
                                                                                e.args[0])
             
     def add_user(self, nickhost, level):
         try:
             if self.is_user(nickhost):
-                self.log.warning('Unable to add user who already exists {0}'.format(nickhost))
-                return 'Unable to add user who already exists {0}'.format(nickhost)
+                self.log.warning(u'Unable to add user who already exists {0}'.format(nickhost))
+                return u'Unable to add user who already exists {0}'.format(nickhost)
                 
             else:
                 self.db.execute('INSERT INTO {0} VALUES(?, ?)'.format(self.module_name),[nickhost, level])
                 self.db.commit()
-                self.log.info('Successfully added user {0} with level {1}'.format(nickhost, level))
-                return 'Successfully added user {0}'.format(nickhost)
+                self.log.info(u'Successfully added user {0} with level {1}'.format(nickhost, level))
+                return u'Successfully added user {0}'.format(nickhost)
         
         except sqlite3.Error as e:
             self.db.rollback()
-            self.log.error('Unable to add user {0} due to database error{1}'.format(nickhost,
+            self.log.error(u'Unable to add user {0} due to database error{1}'.format(nickhost,
                                                                                      e.args[0]))
-            return 'Unable to add user {0} due to a database error{1}'.format(nickhost,
+            return u'Unable to add user {0} due to a database error{1}'.format(nickhost,
                                                                                e.args[0])
     
     def delete_user(self, nickhost):
@@ -171,18 +208,18 @@ class IdentAuth:
             if self.is_user(nickhost):
                 self.db.execute('DELETE FROM {0} WHERE name=?'.format(self.module_name), [nickhost])
                 self.db.commit()
-                self.log.info('Succesfully deleted user {0}'.format(nickhost))
-                return 'Succesfully deleted user {0}'.format(nickhost)
+                self.log.info(u'Succesfully deleted user {0}'.format(nickhost))
+                return u'Succesfully deleted user {0}'.format(nickhost)
             
             else:
-                self.log.warning('Unable to delete user {0}, they do not exist in the database'.format(nickhost))
-                return 'Unable to delete user {0}, they do not exist in the database'.format(nickhost)
+                self.log.warning(u'Unable to delete user {0}, they do not exist in the database'.format(nickhost))
+                return u'Unable to delete user {0}, they do not exist in the database'.format(nickhost)
                 
         except sqlite3.Error as e:
             self.db.rollback()
-            self.log.error('Unable to delete user {0} due to database error{1}'.format(nickhost,
+            self.log.error(u'Unable to delete user {0} due to database error{1}'.format(nickhost,
                                                                                         e.args[0]))
-            return 'Unable to delete user {0} due to a database error {1}'.format(nickhost,
+            return u'Unable to delete user {0} due to a database error {1}'.format(nickhost,
                                                                                    e.args[0])
     
     def get_level(self, nickhost):
@@ -191,20 +228,20 @@ class IdentAuth:
                 result = self.db.execute('SELECT level FROM {0} WHERE name=?'.format(self.module_name), [nickhost]).fetchone()
                 if result:
                     result = result[0]
-                    self.log.debug('{0} level is {1}'.format(nickhost, result))
-                    return '{0} level is {1}'.format(nickhost, result)
+                    self.log.debug(u'{0} level is {1}'.format(nickhost, result))
+                    return u'{0} level is {1}'.format(nickhost, result)
                 
                 else:
-                    self.log.warning('User {0} could not be found but should exist'.format(nickhost))
-                    return 'User {0} could not be retrieved'.format(nickhost)
+                    self.log.warning(u'User {0} could not be found but should exist'.format(nickhost))
+                    return u'User {0} could not be retrieved'.format(nickhost)
             
             else:
-                self.log.debug('User {0} does not exist'.format(nickhost))
-                return 'User {0} does not exist'.format(nickhost)
+                self.log.debug(u'User {0} does not exist'.format(nickhost))
+                return u'User {0} does not exist'.format(nickhost)
                 
         except sqlite3.Error as e:
-            self.log.exception('Could not get level for {0}'.format(nickhost))
-            return 'Could not get level for {0}'.format(nickhost)
+            self.log.exception(u'Could not get level for {0}'.format(nickhost))
+            return u'Could not get level for {0}'.format(nickhost)
 
 
 class DummyBot:
