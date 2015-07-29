@@ -43,7 +43,7 @@ class CommandBot():
         self.outq = Queue.PriorityQueue()
         #Set up network class
         net = Network(self.inq, self.outq, self.log_name)
-        #Despatch the thread
+        #Dispatch the thread
         self.log.debug("Dispatching network thread")
         thread = threading.Thread(target=net.loop)
         thread.start()

@@ -219,7 +219,7 @@ class IdentHost:
         '''
         self.log.debug(u'Joined channel {0}'.format(channel))
         self.add_channel(channel)
-        self.irc.who(channel)#WE'RE GETTING THE NAMES MAN
+        self.irc.who(channel)
         pass
 
     def users_who(self, command, prefix, params, postfix):

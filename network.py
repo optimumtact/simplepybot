@@ -73,6 +73,8 @@ class Network(object):
                     pass
             else:
                 self.poll_sockets()
+                time.sleep(.1)
+
         self.log.info('network ending')
 
     def poll_sockets(self):
