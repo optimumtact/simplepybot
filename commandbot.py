@@ -14,7 +14,7 @@ from ircmodule import IRC_Wrapper
 import numerics as nu
 from ident import IdentHost
 from identcontrol import IdentControl
-
+import signal
 class CommandBot():
     '''
     A simple IRC bot with command processing, event processing and timed event functionalities
@@ -24,7 +24,8 @@ class CommandBot():
     def __init__(self, nick, network, port, max_log_len = 100, authmodule=None, ircmodule=None,
                  db_file = "bot.db", module_name="core", log_name="core", log_level=logging.DEBUG,
                  log_handlers = None):
-
+        #register a signal handler (closes bot no matter what)
+        signal.signal(signal.SIGINT, self.signal_handler)
         self.modules = {}
         #set up logging stuff
         self.log_name = log_name
@@ -89,7 +90,7 @@ class CommandBot():
         self.is_mute = False
 
         self.commands = [
-                self.command("quit", self.end, direct=True, auth_level=20),
+                self.command("quit", self.end_command_handler, direct=True, auth_level=20),
                 self.command("mute", self.mute, direct=True, can_mute=False,
                              auth_level=20),
                 self.command(r"!syntax ?(?P<module>\S+)?", self.syntax)
@@ -256,8 +257,9 @@ class CommandBot():
         in a subclass
         '''
         while self.is_running:
-            self.logic()
-            time.sleep(.1)
+	    self.logic()
+	    time.sleep(.1)
+
         self.cleanup()
         self.log.info("Bot ending")
 
@@ -372,7 +374,14 @@ class CommandBot():
             msg = ", ".join(self.modules.keys())
             self.irc.msg_all(msg, targets)
 
-    def end(self, nick, nickhost, action, targets, message, m):
+    def end_command_handler(self, nick, nickhost, action, targets, message, m):
+        self.close()
+
+    def signal_handler(self, signum, frame):
+        self.log.info('Recieived sigint, closing')
+        self.close()
+
+    def close(self):
         '''
         End this bot, closing each module and quitting the server
         '''
@@ -390,8 +399,8 @@ class CommandBot():
 
     def cleanup(self):
         '''
-        Called after all modules are closed and no more events to be processed, cleanup any final
-        bits and pieces
+        Called after all modules are closed and no more events to be processed,
+        cleanup any final bits and pieces
         '''
         self.log.info('Cleaning up after myself')
         self.db.close()
@@ -440,6 +449,8 @@ class CommandBot():
         before quitting
         '''
         #if we have been kicked, don"t attempt a reconnect
+        #TODO : send a rejoin for every channel in our ident list
+        #TODO : purge ident mappings  (module handle reconnect event?)
         if  event == "KILL":
             self.log.info("No reconnection attempt due to being killed")
             self.close()
