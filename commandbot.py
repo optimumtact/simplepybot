@@ -26,6 +26,9 @@ class CommandBot():
                  log_handlers = None):
         #register a signal handler (closes bot no matter what)
         signal.signal(signal.SIGINT, self.signal_handler)
+        signal.signal(signal.SIGTERM, self.signal_handler)
+        signal.signal(signal.SIGQUIT, self.signal_handler)
+
         self.modules = {}
         #set up logging stuff
         self.log_name = log_name
@@ -257,8 +260,8 @@ class CommandBot():
         in a subclass
         '''
         while self.is_running:
-	    self.logic()
-	    time.sleep(.1)
+            self.logic()
+            time.sleep(.1)
 
         self.cleanup()
         self.log.info("Bot ending")
