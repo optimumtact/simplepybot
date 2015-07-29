@@ -39,17 +39,17 @@ def event(event_id, func):
 
 class TimedEvent:
     """
-    Represents a timed event, 
-    the should_trigger method will return true if the 
+    Represents a timed event,
+    the should_trigger method will return true if the
     function should be triggered at the current time
-    
+
     the is_expired method will return true if the timedevent
     has expired (gone past it"s end_date)
     """
 
-    def __init__(start_date, end_date, interval, func, func_args, func_kwargs):
+    def __init__(self, start_date, end_date, interval, func, func_args, func_kwargs):
         """
-        set up a new timed event object 
+        set up a new timed event object
         """
         self.sd = start_date
         self.ed = end_date
