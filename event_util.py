@@ -1,6 +1,7 @@
 import collections
 from functools import total_ordering
 import numerics as nu
+from datetime import datetime
 
 @total_ordering
 class M_ordering(object):
@@ -35,6 +36,7 @@ def event(event_id, func):
         return True
 
     return process
+
 
 
 class TimedEvent:
@@ -78,6 +80,45 @@ class TimedEvent:
         this event
         """
         if datetime.now() > self.ed:
+            return True
+        else:
+            return False
+
+class RepeatingEvent(TimedEvent):
+
+    def __init__(self, start_date, repeat_count, interval, func, func_args, func_kwargs):
+        """
+        set up a new timed event object
+        """
+        self.sd = start_date
+        self.rc = repeat_count
+        self.cc = 0 #number of times ticked
+        self.interval = interval
+        self.func = func
+        self.func_args = func_args
+        self.func_kwargs = func_kwargs
+        self.next_timeout = self.sd + self.interval
+
+    def should_trigger(self):
+        """
+        Returns true if the timed event interval has elapsed and we need
+        to trigger the function. It also updates when the next timeout
+        should occur
+        """
+        current_time = datetime.now()
+        if current_time > self.next_timeout:
+            self.next_timeout = current_time + self.interval
+            self.cc += 1
+            return True
+        else:
+            return False
+
+    def is_expired(self):
+        """
+        Returns true if the current time is greater than the end_time for
+        this event
+        """
+        if self.cc >= self.rc:
             return True
         else:
             return False

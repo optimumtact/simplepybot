@@ -232,25 +232,26 @@ class CommandBot():
 
     def run_event_in(self, seconds, func, func_args=(), func_kwargs={}):
         '''
-        Helper function that runs an event x seconds in the future, where seconds
-        is how many seconds from now to run it
+        Helper function that runs an event x seconds in the future,
+        where seconds is how many seconds from now to run it
         '''
         start_time = datetime.now()
         interval = timedelta(seconds=seconds)
         end_time = start_time + interval
         self.add_timed_event(start_time, end_time, interval, func, func_args, func_kwargs)
-        
+
     def add_timed_event(self, start_time, end_time, interval, func, func_args=(), func_kwargs={}):
         '''
         Add an event that will trigger once at start_time and then every time
         interval amount of time has elapsed it will trigger again until end_time
         has passed
-
-        Start time and end time are datetime objects
-        and interval is a timedelta object
         '''
         t_event = eu.TimedEvent(start_time, end_time, interval, func, func_args, func_kwargs)
         self.timed_events.append(t_event)
+
+    def add_repeat_event(self, start_time, repeat_count, interval, func, func_args=(), func_kwargs={}):
+        r_event = eu.RepeatingEvent(start_time, repeat_count, interval, func, func_args, func_kwargs)
+        self.timed_events.append(r_event)
 
     def loop(self):
         '''
