@@ -1,5 +1,6 @@
 from commandbot import CommandBot
 from datetime import datetime, timedelta
+import logging
 
 class ReminderModule():
     '''
@@ -16,9 +17,11 @@ class ReminderModule():
 
     def __init__(self, bot, module_name='Reminder'):
         self.bot = bot
+        self.irc = bot.irc
         self.bot.add_module(module_name, self)
         self.commands = [
-                bot.command(r'!remind me in (?P<num>\d+) (?P<unit>hours?|minutes?|seconds?) (?P<string>(\w+| )+)', self.remind_user)
+                bot.command(r'!remind me in (?P<num>\d+) (?P<unit>hours?|minutes?|seconds?) (?P<string>(\w+| )+)', self.remind_user),
+                bot.command(r'!repeat (?P<num>\d+) (?P<string>(\w+| )+)', self.repeat_user),
                 ]
 
         self.events = []
@@ -62,20 +65,36 @@ class ReminderModule():
         bot.add_timed_event(st, et, i, self.send_reminder, [string])
         '''
         self.bot.add_timed_event(start_date, end_date, interval, self.send_reminder, func_args=(string, targets))
-        
-        #let the user know!
-        self.bot.msg_all("Copy that", targets)
 
+        #let the user know!
+        self.irc.msg_all("Copy that", targets)
+
+
+    def repeat_user(self, nick, nickhost, action, targets, message, m):
+        '''
+        Create an event to repeat a message num number of times
+        '''
+        number = m.group('num')
+        number = int(number)
+        name = nick
+        string = m.group('string')
+        string = "{0}: {1}".format(name, string)
+        start_date = datetime.now()
+        interval = timedelta(seconds=1)
+
+        self.bot.add_repeat_event(start_date, number, interval, self.send_reminder, func_args=(string, targets))
+        #let the user know!
+        self.irc.msg_all("Copy that", targets)
 
     def send_reminder(self, string, targets):
-        self.bot.msg_all(string, targets)
-    
+        self.irc.msg_all(string, targets)
+
     def syntax(self):
         return  '''
                 Reminder module supports
                 !remind me in {x} [minutes|seconds|hours] {some reminder string}
                 '''
-                
+
     def close(self):
         #we don't need to clean up anything special
         pass
@@ -83,12 +102,15 @@ class ReminderModule():
 if __name__ == '__main__':
     #basic stream handler
     h = logging.StreamHandler()
-    h.setLevel(logging.DEBUG)
+    h.setLevel(logging.INFO)
     #format to use
-    f = logging.Formatter("%(name)s %(levelname)s %(message)s")
+    f = logging.Formatter(u"%(name)s %(levelname)s %(message)s")
     h.setFormatter(f)
-    file_handler.setFormatter(f)
-    bot = CommandBot('TimeTester', 'irc.segfault.net.nz', 6667, log_handlers=[h])
-    bot.join('#bots')
+    f_h= logging.handlers.TimedRotatingFileHandler("bot.log", when="midnight")
+    f_h.setFormatter(f)
+    f_h.setLevel(logging.DEBUG)
+
+    bot = CommandBot('TimeTester', 'irc.segfault.net.nz', 6667, log_handlers=[h,f_h])
     ReminderModule(bot)
+    bot.join('#bots')
     bot.loop()
