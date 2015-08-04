@@ -24,6 +24,8 @@ class IdentHost:
             eu.event(nu.RPL_WHOREPLY, self.users_who),
             eu.event(nu.BOT_QUIT, self.user_quit),
             eu.event(nu.BOT_NICK, self.user_changed_nick),
+            eu.event(nu.BOT_ERR, self.reconnect),
+            eu.event(nu.BOT_KILL, self.reconnect),
         ]
         self.bot.add_module(module_name, self)
 
@@ -238,3 +240,14 @@ class IdentHost:
             self.add_user(nick, nickhost, channel)
         else:
             self.add_user_to_channel(nickhost, channel)
+
+    def reconnect(self, command, prefix, params, postfix):
+        '''
+        Bot has disconnected, clear all mappings we previously
+        knew about
+        '''
+        self.channels = []
+        self.nickmap = defaultdict(str)
+        self.hostmap = defaultdict(str)
+        self.channel2user = defaultdict(list)
+        self.user2channel = defaultdict(list)
