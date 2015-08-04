@@ -2,6 +2,7 @@ from commandbot import CommandBot
 from datetime import datetime, timedelta
 import logging
 
+
 class ReminderModule():
     '''
     An irc module that provides a simple reminder
@@ -20,12 +21,11 @@ class ReminderModule():
         self.irc = bot.irc
         self.bot.add_module(module_name, self)
         self.commands = [
-                bot.command(r'!remind me in (?P<num>\d+) (?P<unit>hours?|minutes?|seconds?) (?P<string>(\w+| )+)', self.remind_user),
-                bot.command(r'!repeat (?P<num>\d+) (?P<string>(\w+| )+)', self.repeat_user),
-                ]
+            bot.command(r'!remind me in (?P<num>\d+) (?P<unit>hours?|minutes?|seconds?) (?P<string>(\w+| )+)', self.remind_user),
+            bot.command(r'!repeat (?P<num>\d+) (?P<string>(\w+| )+)', self.repeat_user),
+        ]
 
         self.events = []
-
 
     def remind_user(self, nick, nickhost, action, targets, message, m):
         '''
@@ -45,7 +45,7 @@ class ReminderModule():
         the interval is num*units
         '''
         start_date = datetime.now()
-        #use the units arg to build the correct timedelta type
+        # use the units arg to build the correct timedelta type
         if unit in ['hour', 'hours']:
             interval = timedelta(hours=number)
 
@@ -66,9 +66,8 @@ class ReminderModule():
         '''
         self.bot.add_timed_event(start_date, end_date, interval, self.send_reminder, func_args=(string, targets))
 
-        #let the user know!
+        # let the user know!
         self.irc.msg_all("Copy that", targets)
-
 
     def repeat_user(self, nick, nickhost, action, targets, message, m):
         '''
@@ -83,7 +82,7 @@ class ReminderModule():
         interval = timedelta(seconds=1)
 
         self.bot.add_repeat_event(start_date, number, interval, self.send_reminder, func_args=(string, targets))
-        #let the user know!
+        # let the user know!
         self.irc.msg_all("Copy that", targets)
 
     def send_reminder(self, string, targets):
@@ -96,21 +95,21 @@ class ReminderModule():
                 '''
 
     def close(self):
-        #we don't need to clean up anything special
+        # we don't need to clean up anything special
         pass
 
 if __name__ == '__main__':
-    #basic stream handler
+    # basic stream handler
     h = logging.StreamHandler()
     h.setLevel(logging.INFO)
-    #format to use
+    # format to use
     f = logging.Formatter(u"%(name)s %(levelname)s %(message)s")
     h.setFormatter(f)
-    f_h= logging.handlers.TimedRotatingFileHandler("bot.log", when="midnight")
+    f_h = logging.handlers.TimedRotatingFileHandler("bot.log", when="midnight")
     f_h.setFormatter(f)
     f_h.setLevel(logging.DEBUG)
 
-    bot = CommandBot('TimeTester', 'irc.segfault.net.nz', 6667, log_handlers=[h,f_h])
+    bot = CommandBot('TimeTester', 'irc.segfault.net.nz', 6667, log_handlers=[h, f_h])
     ReminderModule(bot)
     bot.join('#bots')
     bot.loop()

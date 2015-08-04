@@ -255,8 +255,8 @@ ERR_SASLABORTED = '906'
 ERR_SASLALREADY = '907'
 ERR_LAST_ERR_MSG = '999'
 
-#Constants used by the bot for internal event tagging
-#Many are just 1-1 to IRC COMMANDS
+# Constants used by the bot for internal event tagging
+# Many are just 1-1 to IRC COMMANDS
 BOT_ERR = 'ERROR'
 BOT_KILL = 'KILL'
 BOT_PING = 'PING'

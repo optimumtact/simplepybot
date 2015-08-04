@@ -3,8 +3,10 @@ from collections import defaultdict
 import numerics as nu
 import event_util as eu
 
+
 class IdentHost:
-    def __init__(self, bot, module_name='identhost', log_level = logging.INFO):
+
+    def __init__(self, bot, module_name='identhost', log_level=logging.INFO):
         self.bot = bot
         self.log = logging.getLogger(u'{0}.{1}'.format(bot.log_name, module_name))
         self.log.setLevel(log_level)
@@ -16,15 +18,14 @@ class IdentHost:
         self.channel2user = defaultdict(list)
         self.user2channel = defaultdict(list)
         self.commands = []
-        self.events =   [
-                        eu.event(nu.BOT_JOIN, self.user_join),
-                        eu.event(nu.BOT_PART, self.user_part),
-                        eu.event(nu.RPL_WHOREPLY, self.users_who),
-                        eu.event(nu.BOT_QUIT, self.user_quit),
-                        eu.event(nu.BOT_NICK, self.user_changed_nick),
-                        ]
+        self.events = [
+            eu.event(nu.BOT_JOIN, self.user_join),
+            eu.event(nu.BOT_PART, self.user_part),
+            eu.event(nu.RPL_WHOREPLY, self.users_who),
+            eu.event(nu.BOT_QUIT, self.user_quit),
+            eu.event(nu.BOT_NICK, self.user_changed_nick),
+        ]
         self.bot.add_module(module_name, self)
-
 
     def is_user(self, user):
         '''
@@ -38,7 +39,7 @@ class IdentHost:
         '''
         Add user and first channel mapping
         '''
-        #store mapping between nick and user
+        # store mapping between nick and user
         self.nickmap[nick] = user
         self.hostmap[user] = nick
         self.log.debug(u'Adding user mapping {1}=>{0}'.format(user, nick, channel))
@@ -52,14 +53,14 @@ class IdentHost:
         Remove all channel and nick mappings
         for this user
         '''
-        #remove appropriate mappings
+        # remove appropriate mappings
         del self.nickmap[nick]
         del self.hostmap[user]
         self.log.debug('Removing user mapping {1}=>{0}'.format(user, nick))
         for channel in self.user2channel[user]:
             self.log.debug(u'Removing {0} from channel {1}'.format(user, channel))
             self.channel2user[channel].remove(user)
-        
+
         del self.user2channel[user]
 
     def change_user_nick(self, user, newnick):
@@ -68,7 +69,7 @@ class IdentHost:
         self.hostmap[user] = newnick
         del self.nickmap[oldnick]
         self.nickmap[newnick] = user
-            
+
     def remove_user_from_channel(self, user, channel):
         '''
         Unmap user from this channel
@@ -145,6 +146,7 @@ class IdentHost:
     '''
     Event handlers past this point
     '''
+
     def user_changed_nick(self, command, prefix, params, postfix):
         '''
         User changed their nick, update the mapping
@@ -153,7 +155,7 @@ class IdentHost:
         newnick = postfix
         self.log.debug(u'User {0} changed nick to {1}'.format(nickhost, newnick))
         self.change_user_nick(nickhost, newnick)
-        
+
     def user_join(self, command, prefix, params, postfix):
         '''
         A new user has joined a channel, store their hostname - nick mapping in the appropriate location
@@ -194,7 +196,7 @@ class IdentHost:
         nick, nickhost = prefix.split('!')
         channel = params[0]
         if self.is_user_in_channel(nickhost, channel):
-            #no need to update
+            # no need to update
             pass
         else:
             self.add_user(nick, nickhost, channel)

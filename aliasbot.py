@@ -3,6 +3,7 @@ import sys
 import logging
 import logging.handlers as handlers
 
+
 class AliasBot:
     '''
     An IRC Bot that can store, retrieve, and delete items.
@@ -10,18 +11,19 @@ class AliasBot:
     the framework
     Contains a simple easter egg - HONK.
     '''
+
     def __init__(self, bot, module_name='Alias', log_level=logging.DEBUG):
-        #set up logging
-        self.log = logging.getLogger(bot.log_name+'.'+module_name)
+        # set up logging
+        self.log = logging.getLogger(bot.log_name + '.' + module_name)
         self.log.setLevel(log_level)
 
         self.commands = [
-                bot.command(r"^\w*", self.honk, direct=True),
-                bot.command(r"^!learn (?P<abbr>\S+) as (?P<long>.+)$", self.learn, auth_level= 20),
-                bot.command(r"^!forget (?P<abbr>\S+)", self.forget, auth_level=20),
-                bot.command(r"^!list_abbr$", self.list_abbrievations, private=True),
-                bot.command(r"^!(?P<abbr>\S+)$", self.retrieve)
-                ]
+            bot.command(r"^\w*", self.honk, direct=True),
+            bot.command(r"^!learn (?P<abbr>\S+) as (?P<long>.+)$", self.learn, auth_level=20),
+            bot.command(r"^!forget (?P<abbr>\S+)", self.forget, auth_level=20),
+            bot.command(r"^!list_abbr$", self.list_abbrievations, private=True),
+            bot.command(r"^!(?P<abbr>\S+)$", self.retrieve)
+        ]
 
         self.events = []
 
@@ -29,17 +31,13 @@ class AliasBot:
         self.bot = bot
         self.honk = "HONK"
         self.irc = bot.irc
-        #get a reference to the bot database
+        # get a reference to the bot database
         self.db = bot.db
-        #set up a table for the module
+        # set up a table for the module
         self.db.execute('''CREATE TABLE IF NOT EXISTS alias_module (short text UNIQUE NOT NULL, long text NOT NULL)''')
 
-
-
-        #register as a module
+        # register as a module
         bot.add_module(module_name, self)
-
-
 
         self.log.info(u'Finished intialising {0}'.format(module_name))
 
@@ -73,7 +71,6 @@ class AliasBot:
             self.log.exception(u'Could not change/add {0} as {1}'.format(abbr, replace))
             self.db.rollback()
             self.irc.msg_all(u'Could not change/add {0} as {1}'.format(abbr, replace), targets)
-
 
     def forget(self, nick, nickhost, action, targets, message, m):
         '''
@@ -113,7 +110,6 @@ class AliasBot:
         except sqlite3.Error as e:
             self.log.exception(u"Unable to retrieve {0}".format(abbr))
             self.irc.msg_all(u'Unable to retrieve {0}'.format(abbr), targets)
-
 
     def list_abbrievations(self, nick, nickhost, action, targets, message, m):
         """
@@ -160,16 +156,15 @@ class AliasBot:
                 !list_abbr
                 '''
 
-
     def close(self):
-        #we don't do anything special
+        # we don't do anything special
         pass
 
 if __name__ == '__main__':
-    #basic stream handler
+    # basic stream handler
     h = logging.StreamHandler()
     h.setLevel(logging.INFO)
-    #format to use
+    # format to use
     f = logging.Formatter(u"%(name)s %(levelname)s %(message)s")
     h.setFormatter(f)
     f_h = handlers.TimedRotatingFileHandler("bot.log", when="midnight")

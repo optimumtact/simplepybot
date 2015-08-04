@@ -3,6 +3,7 @@ import logging
 import logging.handlers as handlers
 import commandbot as cb
 
+
 class IRC_Wrapper:
     '''
     This class provides a clean wrapper around the event queue system
@@ -10,21 +11,21 @@ class IRC_Wrapper:
     out the queue calls to provide a less verbose method of calling
     the irc methods
     '''
-    
-    def __init__(self, bot, module_name = "irc", log_level = logging.DEBUG):
-        self.commands = [                
-                ]
+
+    def __init__(self, bot, module_name="irc", log_level=logging.DEBUG):
+        self.commands = [
+        ]
         self.events = [
-                ]
+        ]
 
         self.module_name = module_name
         self.log = logging.getLogger("{0}.{1}".format(bot.log_name, self.module_name))
         self.log.setLevel(log_level)
         self.bot = bot
         self.bot.add_module(self.module_name, self)
-        self.log.info("Finished initialising {0}".format(module_name)) 
-    
-    #useful methods
+        self.log.info("Finished initialising {0}".format(module_name))
+
+    # useful methods
     def join(self, channel, priority=3):
         '''
         Join a channel
@@ -76,7 +77,7 @@ class IRC_Wrapper:
             priority = how quickly to process the event
         '''
         self.bot.out_event(eu.error(message, priority))
-        
+
     def msg(self, msg, channel, priority=3):
         '''
         Send an irc msg to the given channel
@@ -136,7 +137,7 @@ class IRC_Wrapper:
         Used to handle Kill Events from the server
         Network also uses these to send panic events
         that will end the bot (i.e my socket broke)vent
-        
+
         kwargs:
             priority = how quickly to process the event
         '''
@@ -151,25 +152,25 @@ class IRC_Wrapper:
             priority = how quickly to process the event
         '''
         self.bot.out_event(eu.pong(msg, priority))
-    
+
     def error(self, msg, priority=1):
         '''
         Used to handle disconnection Events from the network
         thread and the irc server itself. Most bot cores
         will run reconnection logic when they get one
-        of these        
+        of these
         kwargs:
             priority = how quickly to process the event
         '''
         self.bot.out_event(eu.error(msg, priority))
-        
+
     def name(self, channel=None, priority=3):
         '''
-        Send the IRC NAME command to the server, passing a 
+        Send the IRC NAME command to the server, passing a
         list of channels if given
         '''
         self.bot.out_event(eu.name(channel, priority))
-    
+
     def who(self, param=None, priority=3):
         '''
         Send the IRC WHO command with given parameter

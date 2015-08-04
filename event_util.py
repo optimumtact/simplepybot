@@ -3,6 +3,7 @@ from functools import total_ordering
 import numerics as nu
 from datetime import datetime
 
+
 @total_ordering
 class M_ordering(object):
     """
@@ -21,6 +22,7 @@ class Message(M_ordering, collections.namedtuple('Message', 'type data priority'
     """
     pass
 
+
 def event(event_id, func):
     """
     This function will take a function and an event_id, when an inbound message"s action
@@ -36,7 +38,6 @@ def event(event_id, func):
         return True
 
     return process
-
 
 
 class TimedEvent:
@@ -84,6 +85,7 @@ class TimedEvent:
         else:
             return False
 
+
 class RepeatingEvent(TimedEvent):
 
     def __init__(self, start_date, repeat_count, interval, func, func_args, func_kwargs):
@@ -92,7 +94,7 @@ class RepeatingEvent(TimedEvent):
         """
         self.sd = start_date
         self.rc = repeat_count
-        self.cc = 0 #number of times ticked
+        self.cc = 0  # number of times ticked
         self.interval = interval
         self.func = func
         self.func_args = func_args
@@ -131,6 +133,7 @@ again, where you don't need to explicitly insert the returned
 events.
 '''
 
+
 def irc_msg(command, data, priority=3):
     '''
     Network uses this to store the inbound events
@@ -138,47 +141,62 @@ def irc_msg(command, data, priority=3):
     '''
     return Message(command, data, priority)
 
-def join(channel, priority = 3):
+
+def join(channel, priority=3):
     return Message(nu.BOT_JOIN_CHAN, (channel,), priority)
 
-def nick(nick, priority = 2):
+
+def nick(nick, priority=2):
     return Message(nu.BOT_NICK, (nick,), priority)
 
-def user(nick, realname, priority = 2):
+
+def user(nick, realname, priority=2):
     return Message(nu.BOT_USER, (nick, realname), priority)
 
-def connect(server, port, priority = 1):
+
+def connect(server, port, priority=1):
     return Message(nu.BOT_CONN, (server, port), priority)
 
-def error(message, priority = 3):
+
+def error(message, priority=3):
     return Message(nu.BOT_ERR, (message,), priority)
 
-def msg_all(msg, channels, priority = 3):
+
+def msg_all(msg, channels, priority=3):
     return Message(nu.BOT_MSG_ALL, (msg, channels), priority)
 
-def msg(msg, channel, priority = 3):
+
+def msg(msg, channel, priority=3):
     return Message(nu.BOT_MSG, (msg, channel), priority)
 
-def msgs(msgs, channel, priority = 3):
+
+def msgs(msgs, channel, priority=3):
     return Message(nu.BOT_MSGS, (msgs, channel), priority)
 
-def msgs_all(msgs, channels, priority = 3):
+
+def msgs_all(msgs, channels, priority=3):
     return Message(nu.BOT_MSGS_ALL, (msgs, channels), priority)
 
-def quit(msg, priority = 3):
+
+def quit(msg, priority=3):
     return Message(nu.BOT_QUIT, (msg,), priority)
 
-def kill(priority = 0):
+
+def kill(priority=0):
     return Message(nu.BOT_KILL, (), priority)
 
-def pong(msg, priority = 1):
+
+def pong(msg, priority=1):
     return Message(nu.BOT_PONG, (msg,), priority)
 
-def error(msg, priority = 1):
+
+def error(msg, priority=1):
     return Message(nu.BOT_ERROR, (msg,), priority)
+
 
 def name(channel, priority):
     return Message(nu.BOT_NAMES, (channel,), priority)
 
-def who(param, priority = 3):
+
+def who(param, priority=3):
     return Message(nu.BOT_WHO, (param,), priority)
