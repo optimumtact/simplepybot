@@ -182,13 +182,13 @@ class CommandBot():
             '''
             auth_level < 0 means do no auth check at all!, this differs from the default
             which gives most things an auth_level of 100. The only thing that currently uses
-            it is the auth module itself, for bootstrapping authentication. Not recommened for
+            it is the auth module itself, for bootstrapping authentication. Not recommended for
             normal use as people may want ignore people who are not in the auth db, and they
             will change how level 100 checks are managed
             '''
             if auth_level:
                 if auth_level > 0 and not bot.auth.is_allowed(nick, nickhost, auth_level):
-                    return True  # Auth failed but was command
+                    return True  # Auth failed but this was a command
 
             # call the function
             func(nick, nickhost, action, args, message, m)
@@ -259,6 +259,9 @@ class CommandBot():
         This is provided so you can hook in at the loop level and change things here
         in a subclass
         '''
+        # TODO - Exception handling that panic kills the IRC network thread
+        # so it doesn't just hang when it dies to some bad code thats not inside
+        # the more robust module handling code
         while self.is_running:
             self.logic()
             time.sleep(.1)
@@ -289,7 +292,7 @@ class CommandBot():
             self.log.debug(u"Inbound event {0}".format(m_event))
             was_event = False
             # this is the cleaned data from an irc msg
-            # i.e PRIVMSG francis!francis@localhost [#bots] "hey all"
+            # i.e PRIVMSG nick!user@localhost [#bots] "hey all"
             # if a priv message we first pass it through the command handlers
             if m_event.type == nu.BOT_PRIVMSG:
                 was_event = True
@@ -298,8 +301,9 @@ class CommandBot():
                 for command in self.commands:
                     try:
                         if command(source, action, args, message):
-                            action = nu.BOT_COMM  # we set the action to command so valid commands can be identified by modules
-                            break  # TODO, should we break, needs a lot more thought
+                            # we set the action to command so valid commands can be identified by modules
+                            action = nu.BOT_COMM
+                            break
 
                     except Exception as e:
                         self.log.exception(u"Error in bot command handler")
@@ -429,7 +433,7 @@ class CommandBot():
         this event is fired, for example, joining channels
         '''
         # TODO: what else do we need to extend this too?
-        # messages/privmsgs
+        # TODO: extend this to a generic framework
         self.registered = True
         for channel in self.channels:
             self.join(channel)
@@ -447,13 +451,12 @@ class CommandBot():
 
     def reconnect(self, source, event, args, message):
         '''
-        Handles disconnection by trying to reconnect 3 times
+        Handles disconnection by trying to reconnect the configured number of times
         before quitting
         '''
         # if we have been kicked, don"t attempt a reconnect
-        # TODO : send a rejoin for every channel in our ident list
-        # TODO : purge ident mappings  (module handle reconnect event?)
-        if event == "KILL":
+        # TODO : rejoin channels we were supposed to be in
+        if event == nu.BOT_KILL:
             self.log.info("No reconnection attempt due to being killed")
             self.close()
 
@@ -463,20 +466,17 @@ class CommandBot():
             self.close()
 
         else:
-            self.log.info(u"Sleeping before reconnection attempt, {0} seconds".format(self.times_reconnected * 60))
+            self.log.info(
+                u"Sleeping before reconnection attempt, {0} seconds".format((self.times_reconnected + 1) * 60)
+            )
             time.sleep((self.times_reconnected + 1) * 60)
             self.registered = False
-            self.log.info(u"Attempting reconnection, attempt no: {0}".format(self.times_reconnected))
             self.times_reconnected += 1
+            self.log.info(u"Attempting reconnection, attempt no: {0}".format(self.times_reconnected))
             # set up events to connect and send USER and NICK commands
             self.irc.connect(self.network, self.port)
             self.irc.user(self.nick, "Python Robot")
             self.irc.nick(self.nick)
 
     def ping(self, source, action, args, message):
-        '''
-        Called on a ping and responds with a PONG
-        Module authors can also hook the PING event for a low resolution timer
-        if you didn"t want to use the timed events system for some reason
-        '''
         self.irc.pong(message)
