@@ -1,4 +1,4 @@
-from commandbot import *
+from commandbot import CommandBot
 import sys
 import logging
 import logging.handlers as handlers
@@ -10,21 +10,21 @@ class AliasBot:
     the framework
     Contains a simple easter egg - HONK.
     '''
-    def __init__(self, bot, module_name ='Alias', log_level = logging.DEBUG):
+    def __init__(self, bot, module_name='Alias', log_level=logging.DEBUG):
         #set up logging
         self.log = logging.getLogger(bot.log_name+'.'+module_name)
         self.log.setLevel(log_level)
-        
+
         self.commands = [
                 bot.command(r"^\w*", self.honk, direct=True),
-                bot.command(r"^!learn (?P<abbr>\S+) as (?P<long>.+)$", self.learn, auth_level = 20),
-                bot.command(r"^!forget (?P<abbr>\S+)", self.forget, auth_level = 20),
+                bot.command(r"^!learn (?P<abbr>\S+) as (?P<long>.+)$", self.learn, auth_level= 20),
+                bot.command(r"^!forget (?P<abbr>\S+)", self.forget, auth_level=20),
                 bot.command(r"^!list_abbr$", self.list_abbrievations, private=True),
                 bot.command(r"^!(?P<abbr>\S+)$", self.retrieve)
                 ]
-        
+
         self.events = []
-        
+
         self.module_name = module_name
         self.bot = bot
         self.honk = "HONK"
@@ -33,16 +33,16 @@ class AliasBot:
         self.db = bot.db
         #set up a table for the module
         self.db.execute('''CREATE TABLE IF NOT EXISTS alias_module (short text UNIQUE NOT NULL, long text NOT NULL)''')
-        
-        
-        
+
+
+
         #register as a module
         bot.add_module(module_name, self)
-        
-      
-        
+
+
+
         self.log.info(u'Finished intialising {0}'.format(module_name))
-        
+
     def alternate_honk(self):
         '''
         Alternate between HONK and honk.
@@ -61,40 +61,39 @@ class AliasBot:
         Learn a new abbreviation.
         '''
         abbr = m.group('abbr')
-        long = m.group('long')
-        self.log.debug(u"Remembering {0} as {1}".format(abbr, long))
-        
+        replace = m.group('long')
+        self.log.debug(u"Remembering {0} as {1}".format(abbr, replace))
+
         try:
-            self.db.execute('INSERT OR REPLACE INTO alias_module VALUES (?, ?)', [abbr, long])
+            self.db.execute('INSERT OR REPLACE INTO alias_module VALUES (?, ?)', [abbr, replace])
             self.db.commit()
-            print('irc msg')
-            self.irc.msg_all(u'Remembering {0} as {1}'.format(abbr, long), targets)
-        
+            self.irc.msg_all(u'Remembering {0} as {1}'.format(abbr, replace), targets)
+
         except sqlite3.Error as e:
-            self.log.exception(u'Could not change/add {0} as {1}'.format(abbr, long))
+            self.log.exception(u'Could not change/add {0} as {1}'.format(abbr, replace))
             self.db.rollback()
-            self.irc.msg_all(u'Could not change/add {0} as {1}'.format(abbr, long), targets)
-            
-            
+            self.irc.msg_all(u'Could not change/add {0} as {1}'.format(abbr, replace), targets)
+
+
     def forget(self, nick, nickhost, action, targets, message, m):
         '''
         Forget about an abbreviation.
         '''
         abbr = m.group('abbr')
         self.log.debug(u"Forgetting {0}".format(abbr))
-        try:        
+        try:
             if self.does_exist(abbr):
                 self.db.execute('DELETE FROM alias_module WHERE short = ?', [abbr])
                 self.db.commit()
                 self.irc.msg_all(u'Successfully deleted {0} from database'.format(abbr), targets)
-            
+
             else:
                 self.irc.msg_all(u'{0} is not in the database'.format(abbr), targets)
-            
+
         except sqlite3.Error as e:
             self.log.exception(u'Unable to delete {0}'.format(abbr))
             self.irc.msg_all(u'Unable to delete {0}'.format(abbr), targets)
-            
+
     def retrieve(self, nick, nickhost, action, targets, message, m):
         '''
         Retrieves a long version of an abbrievated nick
@@ -106,15 +105,15 @@ class AliasBot:
             if result:
                 result = result[0]
                 self.irc.msg_all((result), targets)
-            
+
             else:
                 pass
                 #self.irc.msg_all('No result for abbrievation {0}'.format(abbr), targets)
-        
+
         except sqlite3.Error as e:
             self.log.exception(u"Unable to retrieve {0}".format(abbr))
             self.irc.msg_all(u'Unable to retrieve {0}'.format(abbr), targets)
-        
+
 
     def list_abbrievations(self, nick, nickhost, action, targets, message, m):
         """
@@ -124,14 +123,14 @@ class AliasBot:
             results = self.db.execute('SELECT * FROM alias_module').fetchall()
             if results:
                 self.irc.msg_all(u",".join(map(str, results)), targets)
-            
+
             else:
                 self.irc.msg_all(u'No stored abbrievations yet', targets)
-         
+
         except sqlite3.Error as e:
             self.log.exception(u"Unable to retrieve abbrievations")
             self.irc.msg_all(u"Unable to retrieve abbrievations", targets)
-            
+
     def does_exist(self, abbr):
         '''
         Returns true if the item with abbr exist in the database
@@ -143,15 +142,15 @@ class AliasBot:
             if result:
                 self.log.debug(u"It Does")
                 return True
-                
+
             else:
                 self.log.debug(u"It doesn't")
                 return False
-        
+
         except sqlite3.Error as e:
             self.log.exception(u'Could not verify {0} exists'.format(abbr))
             return False
-    
+
     def syntax(self):
         return  '''
                 Alias module supports
@@ -160,8 +159,8 @@ class AliasBot:
                 !forget {x}
                 !list_abbr
                 '''
-                
-                
+
+
     def close(self):
         #we don't do anything special
         pass
@@ -173,7 +172,7 @@ if __name__ == '__main__':
     #format to use
     f = logging.Formatter(u"%(name)s %(levelname)s %(message)s")
     h.setFormatter(f)
-    f_h= handlers.TimedRotatingFileHandler("bot.log", when="midnight")
+    f_h = handlers.TimedRotatingFileHandler("bot.log", when="midnight")
     f_h.setFormatter(f)
     f_h.setLevel(logging.DEBUG)
     bot = CommandBot('aylmaoo', 'irc.segfault.net.nz', 6667, log_handlers=[h, f_h])
