@@ -2,4 +2,4 @@
 *.pyc
 BOTDB
 *.db
-*.log
+*.log*
