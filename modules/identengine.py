@@ -3,9 +3,9 @@ from collections import defaultdict
 import numerics as nu
 
 
-class IdentHost:
+class IdentHostEngine:
 
-    def __init__(self, bot, module_name='identhost'):
+    def __init__(self, bot, module_name):
         self.bot = bot
         self.log = logging.getLogger(u'{0}.{1}'.format(bot.log_name, module_name))
         self.irc = bot.irc
@@ -25,7 +25,6 @@ class IdentHost:
             bot.event(nu.BOT_ERR, self.reconnect),
             bot.event(nu.BOT_KILL, self.reconnect),
         ]
-        self.bot.add_module(module_name, self)
 
     def is_user(self, user):
         '''

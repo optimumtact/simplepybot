@@ -1,10 +1,8 @@
-import event_util as eu
 import logging
-import logging.handlers as handlers
-import commandbot as cb
+import event_util as eu
+import numerics as nu
 
-
-class IRC_Wrapper:
+class IrcEngine:
     '''
     This class provides a clean wrapper around the event queue system
     that is used to talk to the network thread, basically it abstracts
@@ -12,7 +10,7 @@ class IRC_Wrapper:
     the irc methods
     '''
 
-    def __init__(self, bot, module_name="irc", log_level=logging.DEBUG):
+    def __init__(self, bot, module_name):
         self.commands = [
         ]
         self.events = [
@@ -20,9 +18,7 @@ class IRC_Wrapper:
 
         self.module_name = module_name
         self.log = logging.getLogger("{0}.{1}".format(bot.log_name, self.module_name))
-        self.log.setLevel(log_level)
         self.bot = bot
-        self.bot.add_module(self.module_name, self)
         self.log.info("Finished initialising {0}".format(module_name))
 
     # useful methods

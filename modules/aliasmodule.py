@@ -1,12 +1,8 @@
 #/usr/bin/python3
-
-from commandbot import CommandBot
-import sys
 import logging
-import logging.handlers as handlers
 
 
-class AliasBot:
+class AliasModule:
     '''
     An IRC Bot that can store, retrieve, and delete items.
     This bot stands as the simplest example of how to use
@@ -14,10 +10,9 @@ class AliasBot:
     Contains a simple easter egg - HONK.
     '''
 
-    def __init__(self, bot, module_name='Alias', log_level=logging.DEBUG):
+    def __init__(self, bot, module_name):
         # set up logging
         self.log = logging.getLogger(bot.log_name + '.' + module_name)
-        self.log.setLevel(log_level)
 
         self.commands = [
             bot.command(r"^\w*", self.honk, direct=True),
@@ -38,8 +33,6 @@ class AliasBot:
         # set up a table for the module
         self.db.execute('''CREATE TABLE IF NOT EXISTS alias_module (short text UNIQUE NOT NULL, long text NOT NULL)''')
 
-        # register as a module
-        bot.add_module(module_name, self)
 
         self.log.info(u'Finished intialising {0}'.format(module_name))
 
@@ -161,10 +154,3 @@ class AliasBot:
     def close(self):
         # we don't do anything special
         pass
-
-if __name__ == '__main__':
-    #create bot with handlers
-    bot = CommandBot('basic.ini')
-    mod = AliasBot(bot)
-    bot.join('#bots')
-    bot.loop()

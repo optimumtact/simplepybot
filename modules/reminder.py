@@ -1,4 +1,3 @@
-from commandbot import CommandBot
 from datetime import datetime, timedelta
 import logging
 
@@ -19,7 +18,6 @@ class ReminderModule():
     def __init__(self, bot, module_name='Reminder'):
         self.bot = bot
         self.irc = bot.irc
-        self.bot.add_module(module_name, self)
         self.commands = [
             bot.command(r'!remind me in (?P<num>\d+) (?P<unit>hours?|minutes?|seconds?) (?P<string>(\w+| )+)', self.remind_user),
             bot.command(r'!repeat (?P<num>\d+) (?P<string>(\w+| )+)', self.repeat_user),
@@ -97,19 +95,3 @@ class ReminderModule():
     def close(self):
         # we don't need to clean up anything special
         pass
-
-if __name__ == '__main__':
-    # basic stream handler
-    h = logging.StreamHandler()
-    h.setLevel(logging.INFO)
-    # format to use
-    f = logging.Formatter(u"%(name)s %(levelname)s %(message)s")
-    h.setFormatter(f)
-    f_h = logging.handlers.TimedRotatingFileHandler("bot.log", when="midnight")
-    f_h.setFormatter(f)
-    f_h.setLevel(logging.DEBUG)
-
-    bot = CommandBot('TimeTester', 'irc.segfault.net.nz', 6667, log_handlers=[h, f_h])
-    ReminderModule(bot)
-    bot.join('#bots')
-    bot.loop()

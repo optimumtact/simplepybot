@@ -10,14 +10,11 @@ import logging.config
 import event_util as eu
 import queue as q 
 import threading
-from authentication import IdentAuth
-from ircmodule import IRC_Wrapper
 import numerics as nu
-from ident import IdentHost
-from identcontrol import IdentControl
 import signal
 import configparser
 import json
+import importlib
 
 
 class CommandBot():
@@ -26,7 +23,7 @@ class CommandBot():
     A framework for adding more modules to do more complex stuff
     '''
 
-    def __init__(self, config_file, authmodule=None):
+    def __init__(self, config_file='basic.ini', authmodule=None):
         self.module_name = 'core'
         
         #read in config and parse it (this also sets up any submodule config
@@ -35,13 +32,23 @@ class CommandBot():
 
     
         self.modules = {}
-        # set up logging stuff
+        # set up logging from json config file
         with open(self.config[self.module_name]['log_config']) as f:
             logdict = json.load(f)
 
         logging.config.dictConfig(logdict) 
         self.log_name = 'bot'
         self.log = logging.getLogger(self.log_name)
+        
+        # variables for determining when the bot is registered
+        self.registered = False
+        self.channels = []
+
+        # variables for bot functionality
+        self.is_mute = False
+
+
+        self.timed_events = []
 
         # set up network stuff
         # IO queues
@@ -52,6 +59,7 @@ class CommandBot():
         # Dispatch the thread
         self.log.debug("Dispatching network thread")
         thread = threading.Thread(target=net.loop)
+        #this is not gonna do much but loop atm
         thread.start()
 
         #start reading and handling constants
@@ -70,28 +78,27 @@ class CommandBot():
 
         # create a ref to the db connection
         self.db = sqlite3.connect(self.config[self.module_name]['db_file'])
+        
+        #load core modules (functionality below depends on this
+        core_modules = self.config[self.module_name]['core_modules']
+        core_modules = core_modules.split(',')
+        for core_module in core_modules:
+            self.load_module(self.config[core_module])
 
-        # irc wrapper module bootstrapped before auth and ident, as auth uses it
-        self.irc = IRC_Wrapper(self)
 
-        #todo allow override of Ident modules
-        self.ident = IdentHost(self)  # set up ident
-        self.identcontrol = IdentControl(self)  # module for controlling it
+        #add modules defined by user in the config file
+        custom_modules = self.config[self.module_name]['modules']
+        custom_modules = custom_modules.split(',')
+        for module in custom_modules:
+            self.load_module(self.config[module])
+        
+        
+        # register signal handlers (closes bot)
+        signal.signal(signal.SIGINT, self.signal_handler)
+        signal.signal(signal.SIGTERM, self.signal_handler)
+        signal.signal(signal.SIGQUIT, self.signal_handler)
 
-        # if no authmodule is passed through, use the default host/ident module
-        if not authmodule:
-            self.auth = IdentAuth(self)
-
-        else:
-            self.auth = authmodule
-
-        # variables for determining when the bot is registered
-        self.registered = False
-        self.channels = []
-
-        # variables for bot functionality
-        self.is_mute = False
-
+        # events/commands we respond too
         self.commands = [
             self.command("quit", self.end_command_handler, direct=True, auth_level=20),
             self.command("mute", self.mute, direct=True, can_mute=False,
@@ -110,14 +117,6 @@ class CommandBot():
             self.event(nu.BOT_PING, self.ping),
             self.event(nu.BOT_PRIVMSG, self.handle_privmsg),
         ]
-        
-        # register signal handlers (closes bot)
-        signal.signal(signal.SIGINT, self.signal_handler)
-        signal.signal(signal.SIGTERM, self.signal_handler)
-        signal.signal(signal.SIGQUIT, self.signal_handler)
-
-        self.timed_events = []
-
         # send out events to connect and send USER and NICK commands
         self.irc.connect(self.network, self.port)
         self.irc.user(self.nick, self.realname)
@@ -135,6 +134,17 @@ class CommandBot():
     def out_event(self, event):
         self.outq.put(event)
 
+    def load_module(self, module_config):
+        self.log.info('Attempting to load module {0}'.format(module_config['modulename']))
+        modpath = 'modules.{0}'.format(module_config['filename'])
+        module = importlib.import_module(modpath)
+        klass = getattr(module, module_config['class'])
+        instance = klass(self, module_config['modulename'])
+        if 'core' in module_config:
+            setattr(self, module_config['core'], instance)
+
+        self.add_module(module_config['modulename'], instance)
+
     def add_module(self, name, module):
         '''
         Add the given module to the modules dictionary under the given name
@@ -142,7 +152,7 @@ class CommandBot():
         '''
         if name in self.modules:
             raise KeyError(u"Module name:{0} already in use".format(name))
-        self.modules[name] = module
+        self.modules[name] = module 
 
     def get_module(self, name):
         '''
@@ -411,3 +421,8 @@ class CommandBot():
 
     def ping(self, source, action, args, message):
         self.irc.pong(message)
+
+if __name__ == '__main__':
+    bot = CommandBot()
+    bot.join('#bots')
+    bot.loop()

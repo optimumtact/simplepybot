@@ -1,10 +1,12 @@
 import sqlite3
 import logging
+import event_util as eu
+import numerics as nu
 
 
-class IdentAuth:
+class BasicAuthEngine:
 
-    def __init__(self, bot, module_name='identauth'):
+    def __init__(self, bot, module_name):
         self.bot = bot
         self.ident = bot.ident
         self.log = logging.getLogger(bot.log_name + '.' + module_name)
@@ -15,7 +17,6 @@ class IdentAuth:
         c = self.db.cursor()
         c.execute("CREATE TABLE IF NOT EXISTS {0} (name TEXT UNIQUE NOT NULL, level INTEGER NOT NULL)".format(self.module_name))
         self.db.commit()
-        self.bot.add_module(module_name, self)
         self.commands = [
             bot.command(r'add user (?P<nick>\S+) (?P<level>\d+)', self.add_user_c, auth_level=20),
             bot.command(r'update user (?P<nick>\S+) (?P<level>\d+)', self.update_user_c, auth_level=20),

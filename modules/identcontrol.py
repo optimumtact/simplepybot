@@ -1,9 +1,9 @@
 import logging
 
 
-class IdentControl:
+class IdentHostControl:
 
-    def __init__(self, bot, module_name='identcontrol'):
+    def __init__(self, bot, module_name):
         self.bot = bot
         self.log = logging.getLogger('{0}.{1}'.format(bot.log_name, module_name))
         self.irc = bot.irc
@@ -16,7 +16,6 @@ class IdentControl:
             self.bot.command('channels (?P<nick>.*)', self.find_channels_user_in),
         ]
         self.events = []
-        self.bot.add_module(module_name, self)
 
     def find_nick(self, nick, nickhost, action, targets, message, m):
         nick = m.group('nick')
