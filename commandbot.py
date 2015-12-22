@@ -6,6 +6,7 @@ import sqlite3
 from datetime import datetime, timedelta
 import time
 import logging
+import logging.config
 import event_util as eu
 import queue as q 
 import threading
@@ -15,6 +16,8 @@ import numerics as nu
 from ident import IdentHost
 from identcontrol import IdentControl
 import signal
+import configparser
+import json
 
 
 class CommandBot():
@@ -23,23 +26,22 @@ class CommandBot():
     A framework for adding more modules to do more complex stuff
     '''
 
-    def __init__(self, nick, network, port, max_log_len=100, authmodule=None, ircmodule=None, db_file="bot.db", module_name="core", log_name="core", log_level=logging.DEBUG, log_handlers=None):
-        # register signal handlers (closes bot)
-        signal.signal(signal.SIGINT, self.signal_handler)
-        signal.signal(signal.SIGTERM, self.signal_handler)
-        signal.signal(signal.SIGQUIT, self.signal_handler)
+    def __init__(self, config_file, authmodule=None):
+        self.module_name = 'core'
+        
+        #read in config and parse it (this also sets up any submodule config
+        self.config = configparser.ConfigParser()
+        self.config.read(config_file)
 
+    
         self.modules = {}
         # set up logging stuff
-        self.log_name = log_name
-        self.module_name = module_name
-        self.log = logging.getLogger(self.log_name)
-        self.log.setLevel(log_level)
+        with open(self.config[self.module_name]['log_config']) as f:
+            logdict = json.load(f)
 
-        # if handlers were given we need to add them
-        if log_handlers:
-            for handler in log_handlers:
-                self.log.addHandler(handler)
+        logging.config.dictConfig(logdict) 
+        self.log_name = 'bot'
+        self.log = logging.getLogger(self.log_name)
 
         # set up network stuff
         # IO queues
@@ -51,31 +53,29 @@ class CommandBot():
         self.log.debug("Dispatching network thread")
         thread = threading.Thread(target=net.loop)
         thread.start()
+
+        #start reading and handling constants
         # params for connection
-        self.nick = nick
-        self.network = network
-        self.port = port
-        self.commandprefix = '!'
+        self.nick = self.config[self.module_name]['nick']
+        self.realname = self.config[self.module_name]['realname']
+        self.network = self.config[self.module_name]['network']
+        self.port = int(self.config[self.module_name]['port'])
+        self.commandprefix = self.config[self.module_name]['commandprefix']
 
         # network stuff done
 
-        # TODO a lot of these need to be made into config options, along with most of the
-        # kwarg params
-        self.max_reconnects = 3
+        self.max_reconnects = int(self.config[self.module_name]['max_reconnects'])
         self.times_reconnected = 0
         self.is_running = True
 
         # create a ref to the db connection
-        self.db = sqlite3.connect(db_file)
+        self.db = sqlite3.connect(self.config[self.module_name]['db_file'])
 
-        # irc module bootstrapped before auth and ident, as auth uses it
-        if not ircmodule:
-            self.irc = IRC_Wrapper(self)
+        # irc wrapper module bootstrapped before auth and ident, as auth uses it
+        self.irc = IRC_Wrapper(self)
 
-        else:
-            self.irc = ircmodule
-
-        self.ident = IdentHost(self, log_level=log_level)  # set up ident
+        #todo allow override of Ident modules
+        self.ident = IdentHost(self)  # set up ident
         self.identcontrol = IdentControl(self)  # module for controlling it
 
         # if no authmodule is passed through, use the default host/ident module
@@ -110,12 +110,17 @@ class CommandBot():
             self.event(nu.BOT_PING, self.ping),
             self.event(nu.BOT_PRIVMSG, self.handle_privmsg),
         ]
+        
+        # register signal handlers (closes bot)
+        signal.signal(signal.SIGINT, self.signal_handler)
+        signal.signal(signal.SIGTERM, self.signal_handler)
+        signal.signal(signal.SIGQUIT, self.signal_handler)
 
         self.timed_events = []
 
         # send out events to connect and send USER and NICK commands
         self.irc.connect(self.network, self.port)
-        self.irc.user(self.nick, "Python Robot")
+        self.irc.user(self.nick, self.realname)
         self.irc.nick(self.nick)
 
     def command(self, expr, func, direct=False, can_mute=True, private=False, auth_level=100):
@@ -401,7 +406,7 @@ class CommandBot():
             self.log.info(u"Attempting reconnection, attempt no: {0}".format(self.times_reconnected))
             # set up events to connect and send USER and NICK commands
             self.irc.connect(self.network, self.port)
-            self.irc.user(self.nick, "Python Robot")
+            self.irc.user(self.nick, self.realname)
             self.irc.nick(self.nick)
 
     def ping(self, source, action, args, message):

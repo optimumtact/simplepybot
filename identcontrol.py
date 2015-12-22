@@ -3,10 +3,9 @@ import logging
 
 class IdentControl:
 
-    def __init__(self, bot, module_name='identcontrol', log_level=logging.INFO):
+    def __init__(self, bot, module_name='identcontrol'):
         self.bot = bot
         self.log = logging.getLogger('{0}.{1}'.format(bot.log_name, module_name))
-        self.log.setLevel(log_level)
         self.irc = bot.irc
         self.ident = bot.ident
         self.module_name = module_name

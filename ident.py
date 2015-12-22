@@ -5,10 +5,9 @@ import numerics as nu
 
 class IdentHost:
 
-    def __init__(self, bot, module_name='identhost', log_level=logging.INFO):
+    def __init__(self, bot, module_name='identhost'):
         self.bot = bot
         self.log = logging.getLogger(u'{0}.{1}'.format(bot.log_name, module_name))
-        self.log.setLevel(log_level)
         self.irc = bot.irc
         self.module_name = module_name
         self.channels = []

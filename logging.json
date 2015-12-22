@@ -1,0 +1,41 @@
+{
+    "version": 1,
+    "disable_existing_loggers": true,
+    "formatters": {
+        "simple": {
+            "format": "%(name)s %(levelname)s %(message)s"
+        }
+    },
+    "handlers": {
+        "console": {
+             "class": "logging.StreamHandler",
+             "level": "INFO",
+             "formatter": "simple",
+             "stream": "ext://sys.stdout"
+        },
+        "file": {
+            "level": "DEBUG",
+            "formatter": "simple",
+            "class": "logging.handlers.TimedRotatingFileHandler",
+            "filename": "bot.log",
+            "when": "midnight"
+        }
+    },
+    "loggers": {
+        "bot": {
+             "level": "DEBUG",
+             "handlers": ["console", "file"],
+             "propagate": "yes"
+         },
+        "bot.identhost": {
+             "level": "INFO"
+         },
+        "bot.identauth": {
+             "level": "INFO"
+         },
+        "bot.identcontrol": {
+             "level": "INFO"
+         }
+    }
+
+}

@@ -4,11 +4,10 @@ import logging
 
 class IdentAuth:
 
-    def __init__(self, bot, module_name='identauth', log_level=logging.INFO):
+    def __init__(self, bot, module_name='identauth'):
         self.bot = bot
         self.ident = bot.ident
         self.log = logging.getLogger(bot.log_name + '.' + module_name)
-        self.log.setLevel(log_level)
         self.db = bot.db
         self.irc = bot.irc
         self.module_name = module_name
