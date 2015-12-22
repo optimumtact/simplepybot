@@ -257,28 +257,28 @@ class CommandBot():
         We have received a privmsg, loop through the commands in our command handler
         and in the module command handlers trying to find matches
         '''
-        for command in self.commands:
-            try:
+        try:
+            for command in self.commands:
                 if command(source, action, args, message):
                     # we set the action to command so valid commands can be identified by modules
                     action = nu.BOT_COMM
                     break
 
-            except Exception as e:
-                self.log.exception(u"Error in bot command handler")
-                self.irc.msg_all(u"Unable to complete request due to internal error", args)
+        except Exception as e:
+            self.log.exception(u"Error in bot command handler")
+            self.irc.msg_all(u"Unable to complete request due to internal error", args)
 
-        for module_name in self.modules:
-            module = self.modules[module_name]
-            for command in module.commands:
-                try:
+        try:
+            for module_name in self.modules:
+                module = self.modules[module_name]
+                for command in module.commands:
                     if command(source, action, args, message):
                         action = nu.BOT_COMM
                         break
 
-                except Exception as e:
-                    self.log.exception("Error in module command handler:{0}".format(module_name))
-                    self.irc.msg_all("Unable to complete request due to internal error", args)
+        except Exception as e:
+            self.log.exception("Error in module command handler:{0}".format(module_name))
+            self.irc.msg_all("Unable to complete request due to internal error", args)
 
     def ctcp_version(self, nick, nickhost, action, targets, message, m):
         '''
