@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 import time
 import logging
 import event_util as eu
-import Queue
+import queue as q 
 import threading
 from authentication import IdentAuth
 from ircmodule import IRC_Wrapper
@@ -24,7 +24,7 @@ class CommandBot():
     '''
 
     def __init__(self, nick, network, port, max_log_len=100, authmodule=None, ircmodule=None, db_file="bot.db", module_name="core", log_name="core", log_level=logging.DEBUG, log_handlers=None):
-        # register a signal handler (closes bot no matter what)
+        # register signal handlers (closes bot)
         signal.signal(signal.SIGINT, self.signal_handler)
         signal.signal(signal.SIGTERM, self.signal_handler)
         signal.signal(signal.SIGQUIT, self.signal_handler)
@@ -43,8 +43,8 @@ class CommandBot():
 
         # set up network stuff
         # IO queues
-        self.inq = Queue.PriorityQueue()
-        self.outq = Queue.PriorityQueue()
+        self.inq = q.PriorityQueue()
+        self.outq = q.PriorityQueue()
         # Set up network class
         net = Network(self.inq, self.outq, self.log_name)
         # Dispatch the thread
@@ -55,6 +55,7 @@ class CommandBot():
         self.nick = nick
         self.network = network
         self.port = port
+        self.commandprefix = '!'
 
         # network stuff done
 
@@ -95,20 +96,19 @@ class CommandBot():
             self.command("quit", self.end_command_handler, direct=True, auth_level=20),
             self.command("mute", self.mute, direct=True, can_mute=False,
                          auth_level=20),
-            self.command(r"!syntax ?(?P<module>\S+)?", self.syntax)
+            self.command(r"syntax ?(?P<module>\S+)?", self.syntax),
         ]
         # TODO I need to catch 441 or 436 and handle changing bot name by adding
         # a number or an underscore
         # catch also a 432 which is a bad uname
 
         self.events = [
-            eu.event(nu.RPL_ENDOFMOTD, self.registered_event),
-            eu.event(nu.ERR_NOMOTD, self.registered_event),
-            eu.event(nu.BOT_ERR, self.reconnect),
-            eu.event(nu.BOT_KILL, self.reconnect),
-            eu.event(nu.BOT_PING, self.ping),
-            # TODO: can get privmsg handling as an event?
-            #self.event("PRIVMSG", self.handle_priv),
+            self.event(nu.RPL_ENDOFMOTD, self.registered_event),
+            self.event(nu.ERR_NOMOTD, self.registered_event),
+            self.event(nu.BOT_ERR, self.reconnect),
+            self.event(nu.BOT_KILL, self.reconnect),
+            self.event(nu.BOT_PING, self.ping),
+            self.event(nu.BOT_PRIVMSG, self.handle_privmsg),
         ]
 
         self.timed_events = []
@@ -118,83 +118,11 @@ class CommandBot():
         self.irc.user(self.nick, "Python Robot")
         self.irc.nick(self.nick)
 
-    def command(self, expr, func, direct=False, can_mute=True, private=False,
-                auth_level=100):
-        '''
-        Helper function that constructs a command handler suitable for CommandBot.
-        Theres are essentially an extension of the EVENT concept from message_util.py
-        with extra arguments and working only on PRIVMSGS
-
-        args:
-            expr - regex string to be matched against user message
-            func - function to be called upon a match
-
-        kwargs:
-            direct - this message eust start with the bots nickname i.e botname
-                     quit or botname: quit
-            can_mute - Can this message be muted?
-            private - Is this message always going to a private channel?
-            auth_level - Level of auth this command requires (users who do not have
-                         this level will be ignored
-
-        These are intended to be evaluated against user messages and when a match is found
-        it calls the associated function, passing through the match object to allow you to
-        extract information from the command
-        '''
-        guard = re.compile(expr)
-        bot = self
-
-        def process(source, action, args, message):
-            # grab nick and nick host
-            nick, nickhost = source.split("!")
-
-            # unfortunately there is weirdness in irc and when you get addressed in
-            # a privmsg you see your own name as the channel instead of theirs
-            # It would be nice if both sides saw the other persons name
-            # I guess they weren"t thinking of bots when they wrote the spec
-            # so we replace any instance of our nick with their nick
-            for i, channel in enumerate(args[:]):
-                if channel == self.nick:
-                    args[i] = nick
-
-            # make sure this message was prefixed with our bot username
-            if direct:
-                if not message.startswith(bot.nick):
-                    return False
-
-                # strip nick from message
-                message = message[len(bot.nick):]
-                # strip away any syntax left over from addressing
-                # this may or may not be there
-                message = message.lstrip(": ")
-
-            # If muted, or message private, send it to user not channel
-            if (self.is_mute or private) and can_mute:
-                # replace args with usernick stripped from source
-                args = [nick]
-
-            # check it matches regex and grab the matcher object so the function can
-            # pull stuff out of it
-            m = guard.match(message)
-            if not m:
-                return False
-
-            '''
-            auth_level < 0 means do no auth check at all!, this differs from the default
-            which gives most things an auth_level of 100. The only thing that currently uses
-            it is the auth module itself, for bootstrapping authentication. Not recommended for
-            normal use as people may want ignore people who are not in the auth db, and they
-            will change how level 100 checks are managed
-            '''
-            if auth_level:
-                if auth_level > 0 and not bot.auth.is_allowed(nick, nickhost, auth_level):
-                    return True  # Auth failed but this was a command
-
-            # call the function
-            func(nick, nickhost, action, args, message, m)
-            return True
-
-        return process
+    def command(self, expr, func, direct=False, can_mute=True, private=False, auth_level=100):
+        return eu.command(self, expr, func, direct, can_mute, private, auth_level)
+    
+    def event(self, event_id, func):
+        return eu.event(event_id, func)
 
     def in_event(self, event):
         self.inq.put(event)
@@ -263,26 +191,17 @@ class CommandBot():
         # so it doesn't just hang when it dies to some bad code thats not inside
         # the more robust module handling code
         while self.is_running:
-            self.logic()
+            self.handle_event()
             time.sleep(.1)
 
         self.cleanup()
         self.log.info("Bot ending")
 
-    def logic(self):
+    def handle_event(self):
         '''
-        Simple logic processing.
-
-        Examines all messages received, then attempts to match commands against any messages, in
-        the following order
-
-        if a privmsg
-            commands local to commandbot
-            commands in modules loaded
-
-        all messages(including privmsgs)
-        events local to commandbot
-        events in modules loaded
+        try to match the event against events local to commandbot
+        then against events in modules loaded. PRIV_MSG are handled at this
+        point by the inbuilt priv_msg event handler
 
         It also evaluates all timed events and triggers them appropriately
         '''
@@ -291,35 +210,6 @@ class CommandBot():
             m_event = self.inq.get(False)
             self.log.debug(u"Inbound event {0}".format(m_event))
             was_event = False
-            # this is the cleaned data from an irc msg
-            # i.e PRIVMSG nick!user@localhost [#bots] "hey all"
-            # if a priv message we first pass it through the command handlers
-            if m_event.type == nu.BOT_PRIVMSG:
-                was_event = True
-                # unpack the data!
-                action, source, args, message = m_event.data
-                for command in self.commands:
-                    try:
-                        if command(source, action, args, message):
-                            # we set the action to command so valid commands can be identified by modules
-                            action = nu.BOT_COMM
-                            break
-
-                    except Exception as e:
-                        self.log.exception(u"Error in bot command handler")
-                        self.irc.msg_all(u"Unable to complete request due to internal error", args)
-
-                for module_name in self.modules:
-                    module = self.modules[module_name]
-                    for command in module.commands:
-                        try:
-                            if command(source, action, args, message):
-                                action = nu.BOT_COMM
-                                break
-
-                        except Exception as e:
-                            self.log.exception("Error in module command handler:{0}".format(module_name))
-                            self.irc.msg_all("Unable to complete request due to internal error", args)
 
             # check it against the event commands
             for event in self.events:
@@ -343,7 +233,7 @@ class CommandBot():
             if not was_event:
                 self.log.debug(u"Unhandled event {0}".format(m_event))
 
-        except Queue.Empty:
+        except q.Empty:
             # nothing to do
             pass
 
@@ -361,6 +251,41 @@ class CommandBot():
                 self.timed_events.remove(event)
 
         return
+
+    def handle_privmsg(self, action, source, args, message):
+        '''
+        We have received a privmsg, loop through the commands in our command handler
+        and in the module command handlers trying to find matches
+        '''
+        for command in self.commands:
+            try:
+                if command(source, action, args, message):
+                    # we set the action to command so valid commands can be identified by modules
+                    action = nu.BOT_COMM
+                    break
+
+            except Exception as e:
+                self.log.exception(u"Error in bot command handler")
+                self.irc.msg_all(u"Unable to complete request due to internal error", args)
+
+        for module_name in self.modules:
+            module = self.modules[module_name]
+            for command in module.commands:
+                try:
+                    if command(source, action, args, message):
+                        action = nu.BOT_COMM
+                        break
+
+                except Exception as e:
+                    self.log.exception("Error in module command handler:{0}".format(module_name))
+                    self.irc.msg_all("Unable to complete request due to internal error", args)
+
+    def ctcp_version(self, nick, nickhost, action, targets, message, m):
+        '''
+        We just got a ctcp request, respond with something useful
+        '''
+        msg = u'\x01VERSION Simplepythonbot github.com/optimumtact/simplepybot\x01'
+        self.irc.notice_all(msg, targets)
 
     def syntax(self, nick, nickhost, action, targets, message, m):
         '''
@@ -380,11 +305,12 @@ class CommandBot():
             msg = ", ".join(self.modules.keys())
             self.irc.msg_all(msg, targets)
 
-    def end_command_handler(self, nick, nickhost, action, targets, message, m):
-        self.close()
 
     def signal_handler(self, signum, frame):
         self.log.info('Recieived sigint, closing')
+        self.close()
+    
+    def end_command_handler(self, nick, nickhost, action, targets, message, m):
         self.close()
 
     def close(self):

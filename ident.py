@@ -1,7 +1,6 @@
 import logging
 from collections import defaultdict
 import numerics as nu
-import event_util as eu
 
 
 class IdentHost:
@@ -19,13 +18,13 @@ class IdentHost:
         self.user2channel = defaultdict(list)
         self.commands = []
         self.events = [
-            eu.event(nu.BOT_JOIN, self.user_join),
-            eu.event(nu.BOT_PART, self.user_part),
-            eu.event(nu.RPL_WHOREPLY, self.users_who),
-            eu.event(nu.BOT_QUIT, self.user_quit),
-            eu.event(nu.BOT_NICK, self.user_changed_nick),
-            eu.event(nu.BOT_ERR, self.reconnect),
-            eu.event(nu.BOT_KILL, self.reconnect),
+            bot.event(nu.BOT_JOIN, self.user_join),
+            bot.event(nu.BOT_PART, self.user_part),
+            bot.event(nu.RPL_WHOREPLY, self.users_who),
+            bot.event(nu.BOT_QUIT, self.user_quit),
+            bot.event(nu.BOT_NICK, self.user_changed_nick),
+            bot.event(nu.BOT_ERR, self.reconnect),
+            bot.event(nu.BOT_KILL, self.reconnect),
         ]
         self.bot.add_module(module_name, self)
 
@@ -232,7 +231,7 @@ class IdentHost:
         This is because users with +i will not show up when joining a channel
         only when you send an explicit who
         '''
-        nick = params[5]
+        nick = params[2]
         channel = params[1]
         nickhost = '{0}@{1}'.format(params[2], params[3])
         self.log.debug(u'Who response from {0}=>{1}'.format(nick, nickhost))

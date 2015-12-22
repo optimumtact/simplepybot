@@ -1,3 +1,5 @@
+#/usr/bin/python3
+
 from commandbot import CommandBot
 import sys
 import logging
@@ -170,7 +172,7 @@ if __name__ == '__main__':
     f_h = handlers.TimedRotatingFileHandler("bot.log", when="midnight")
     f_h.setFormatter(f)
     f_h.setLevel(logging.DEBUG)
-    bot = CommandBot('aylmaoo', 'irc.segfault.net.nz', 6667, log_handlers=[h, f_h])
+    bot = CommandBot('integritybobsbot', 'irc.segfault.net.nz', 6667, log_handlers=[h, f_h])
     mod = AliasBot(bot)
     bot.join('#bots')
     bot.loop()

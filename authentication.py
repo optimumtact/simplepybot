@@ -18,14 +18,14 @@ class IdentAuth:
         self.db.commit()
         self.bot.add_module(module_name, self)
         self.commands = [
-            bot.command(r'!add user (?P<nick>\S+) (?P<level>\d+)', self.add_user_c, auth_level=20),
-            bot.command(r'!update user (?P<nick>\S+) (?P<level>\d+)', self.update_user_c, auth_level=20),
-            bot.command(r'!delete user (?P<nick>\S+)', self.del_user_c, auth_level=20),
-            bot.command(r'!user level (?P<nick>\S+)', self.show_user_c),
-            bot.command(r'!ignore user (?P<nick>\S+)', self.ignore_user_c, auth_level=20),
-            bot.command(r'!unignore user (?P<nick>\S+)', self.unignore_user_c, auth_level=20),
+            bot.command(r'add user (?P<nick>\S+) (?P<level>\d+)', self.add_user_c, auth_level=20),
+            bot.command(r'update user (?P<nick>\S+) (?P<level>\d+)', self.update_user_c, auth_level=20),
+            bot.command(r'delete user (?P<nick>\S+)', self.del_user_c, auth_level=20),
+            bot.command(r'user level (?P<nick>\S+)', self.show_user_c),
+            bot.command(r'ignore user (?P<nick>\S+)', self.ignore_user_c, auth_level=20),
+            bot.command(r'unignore user (?P<nick>\S+)', self.unignore_user_c, auth_level=20),
             # Negative auth means, no check at all. This should be the only place it's ever needed!
-            bot.command(r'!bootstrap auth', self.bootstrap, auth_level=-1),
+            bot.command(r'bootstrap auth', self.bootstrap, auth_level=-1),
         ]
 
         self.events = []
@@ -270,17 +270,17 @@ class DummyBot:
 if __name__ == '__main__':
     bot = DummyBot()
     auth = IdentAuth(bot)
-    print auth.add_user('oranges', 20)
-    print auth.is_allowed('oranges', 'oranges', 20)
-    print auth.is_allowed('oranges', 'oranges', 10)
-    print auth.is_allowed('richard', 'richard', 20)
-    print auth.add_user('oranges', 10)
-    print auth.add_user('house', 10)
-    print auth.is_allowed('house', 'house', 10)
-    print auth.update_user('notauser', 20)
-    print auth.update_user('oranges', 10)
-    print auth.is_allowed('oranges', 'oranges', 10)
-    print auth.is_allowed('notauser', 'notauser', 25)
-    print auth.delete_user('house')
-    print auth.is_allowed('house', 'house', 100)
-    print auth.delete_user('notauser')
+    print( auth.add_user('oranges', 20) )
+    print( auth.is_allowed('oranges', 'oranges', 20) ) 
+    print( auth.is_allowed('oranges', 'oranges', 10) )
+    print( auth.is_allowed('richard', 'richard', 20) )
+    print( auth.add_user('oranges', 10) )
+    print( auth.add_user('house', 10) )
+    print( auth.is_allowed('house', 'house', 10) )
+    print( auth.update_user('notauser', 20) )
+    print( auth.update_user('oranges', 10) )
+    print( auth.is_allowed('oranges', 'oranges', 10) ) 
+    print( auth.is_allowed('notauser', 'notauser', 25) )
+    print( auth.delete_user('house') )
+    print( auth.is_allowed('house', 'house', 100) )
+    print( auth.delete_user('notauser') )

@@ -3,7 +3,7 @@ import socket
 import errno
 import select
 import logging
-import Queue as q
+import queue as q
 import event_util as eu
 import time
 import numerics as nu
@@ -47,6 +47,8 @@ class Network(object):
             eu.event(nu.BOT_MSGS_ALL, self.msgs_all),
             eu.event(nu.BOT_MSGS, self.msgs),
             eu.event(nu.BOT_MSG_ALL, self.msg_all),
+            eu.event(nu.BOT_NOTICE, self.notice),
+            eu.event(nu.BOT_NOTICE_ALL, self.notice_all),
             eu.event(nu.BOT_CONN, self.connect),
             eu.event(nu.BOT_USER, self.user),
             eu.event(nu.BOT_NICK, self.nick),
@@ -273,6 +275,37 @@ class Network(object):
         '''
         for msg in msgs:
             self.msg(msg, channel)
+
+    def notice(self, message, channel):
+        '''
+        Send a notice to a specific target.
+        message: the message to send
+        channel: the target to send it to
+
+        This method takes care of enforcing the 512 character limit
+        right now it does it very simply by cutting the message at char 510
+        (leaving space for the \r\n) and calling msg again with the remainder
+        later on it might be improved by finding the nearest space to cut on
+        under the limit
+        '''
+        msg = u'NOTICE {0} :{1}'.format(channel, message)
+        if len(msg) > 512:
+            sending = msg[:510]
+            remainder = msg[510:]
+            self.send(sending)
+            self.msg(remainder, channel)
+
+        else:
+            self.send(msg)
+    
+    def notice_all(self, message, channels):
+        '''
+        Accepts a message to send to a list of channels
+        message: the message to send
+        channels: A list of targets to send it to
+        '''
+        for channel in channels:
+            self.notice(message, channel)
 
     def join(self, channel):
         '''

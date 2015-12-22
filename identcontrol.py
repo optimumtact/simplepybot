@@ -11,10 +11,10 @@ class IdentControl:
         self.ident = bot.ident
         self.module_name = module_name
         self.commands = [
-            self.bot.command('!nick (?P<nick>.*)', self.find_nick),
-            self.bot.command('!nickhost (?P<nickhost>.*)', self.find_nick_host),
-            self.bot.command('!users (?P<chan>.*)', self.find_users_in_channel),
-            self.bot.command('!channels (?P<nick>.*)', self.find_channels_user_in),
+            self.bot.command('nick (?P<nick>.*)', self.find_nick),
+            self.bot.command('nickhost (?P<nickhost>.*)', self.find_nick_host),
+            self.bot.command('users (?P<chan>.*)', self.find_users_in_channel),
+            self.bot.command('channels (?P<nick>.*)', self.find_channels_user_in),
         ]
         self.events = []
         self.bot.add_module(module_name, self)

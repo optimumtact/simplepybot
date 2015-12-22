@@ -99,7 +99,6 @@ class IRC_Wrapper:
             priority = how quickly to process the event
         '''
         self.bot.out_event(eu.msg_all(msg, channels, priority))
-
     def msgs(self, msgs, channel, priority=3):
         '''
         Send a list of messages to the given channel
@@ -121,6 +120,29 @@ class IRC_Wrapper:
             priority = how quickly to process the event
         '''
         self.bot.out_event(eu.msgs_all(msgs, channels, priority))
+
+    def notice(self, msg, channel, priority=3):
+        '''
+        Send an irc notice to the given channel
+        args:
+            msg = the message to send
+            channel = The channel to send it to
+        kwargs:
+            priority = how quickly to process the event
+        '''
+        self.bot.out_event(eu.notice_msg(action, data, priority))
+
+    def notice_all(self, msg, channels, priority=3):
+        '''
+        Send an irc msg to the given channels
+        args:
+            msg = the message to send
+            channels = The channels to send it to
+        kwargs:
+            priority = how quickly to process the event
+        '''
+        self.bot.out_event(eu.notice_all(msg, channels, priority))
+
 
     def quit(self, msg, priority=3):
         '''
