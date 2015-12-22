@@ -29,6 +29,11 @@ If you want to include the module as an accessible attribute on the bot object (
 ```
 core = attributename
 ```
+A module should pull all and any configuration from the config file, module creators are advised to do
+```
+self.config = bot.config[self.module_name]
+```
+aside from the predefined, class,filename,modulename attributes just about anything can be put in there, see the python configparser docs for more info
 
 #Writing your own module
 create a new class with an init that accepts the following
