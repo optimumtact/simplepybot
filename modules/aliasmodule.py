@@ -16,10 +16,10 @@ class AliasModule:
 
         self.commands = [
             bot.command(r"^\w*", self.honk, direct=True),
-            bot.command(r"^!learn (?P<abbr>\S+) as (?P<long>.+)$", self.learn, auth_level=20),
-            bot.command(r"^!forget (?P<abbr>\S+)", self.forget, auth_level=20),
-            bot.command(r"^!list_abbr$", self.list_abbrievations, private=True),
-            bot.command(r"^!(?P<abbr>\S+)$", self.retrieve)
+            bot.command(r"^learn (?P<abbr>\S+) as (?P<long>.+)$", self.learn, auth_level=20),
+            bot.command(r"^forget (?P<abbr>\S+)", self.forget, auth_level=20),
+            bot.command(r"^list_abbr$", self.list_abbrievations, private=True),
+            bot.command(r"^(?P<abbr>\S+)$", self.retrieve)
         ]
 
         self.events = []
