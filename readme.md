@@ -2,20 +2,6 @@ Simplepybot is an attempt at a dead simple python irc bot that got way out of co
 
 It is currently targeting python3
 
-#TODO
-* Implement support for CTCP (as a core submodule)
-* Implement NickServ support as a module
-* Add spam control - the bot should avoid sending too many messages (configurable, with sensible defaults) to a channel, and should auto ignore users who abuse it's functions. This will require tracking the "originator" of a command and also keep a count of outgoing messages in the past x minutes and qeueing messages as necessary
-
-* Change permission system to use permissions instead of numbers (i.e) !grant permission [nick] module/permisson
-
-* Introduce idea of a role, which is preconfigured with permission !grant role [nick] rolename
-
-* Write a script that will autogenerate irc.py event_util.py and numerics.py from a json/txt file. This is all simply code that provides a wrapper over the event system simplepybot uses, it's entirely plausible that the bindings at each level can be programtically generated, preventing you having to write the same method basically twice
-
-* Clean up logging, right now it's extremely spammy and I want to fix that by leaving most modules set on INFO and above level and only turn on DEBUG on modules that I am programming on explicitly
-
-
 #Configuration
 configuration is done by editing the basic.ini file, you can define more core and custom modules by adding them.
 
