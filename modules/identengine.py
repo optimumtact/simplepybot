@@ -1,6 +1,7 @@
 import logging
 from collections import defaultdict
 import numerics as nu
+import json
 
 
 class IdentHostEngine:
@@ -250,3 +251,10 @@ class IdentHostEngine:
         self.hostmap = defaultdict(str)
         self.channel2user = defaultdict(list)
         self.user2channel = defaultdict(list)
+
+    def dump(self):
+        with open('dump.json', 'a') as f:
+           json.dump(self.nickmap, f)
+           json.dump(self.hostmap, f)
+           json.dump(self.channel2user, f)
+           json.dump(self.user2channel, f)

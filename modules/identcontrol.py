@@ -10,26 +10,29 @@ class IdentHostControl:
         self.ident = bot.ident
         self.module_name = module_name
         self.commands = [
-            self.bot.command('nick (?P<nick>.*)', self.find_nick),
-            self.bot.command('nickhost (?P<nickhost>.*)', self.find_nick_host),
+            self.bot.command('nick (?P<ident>.*)', self.find_ident_nick),
+            self.bot.command('ident (?P<nick>.*)', self.find_nick_ident),
             self.bot.command('users (?P<chan>.*)', self.find_users_in_channel),
             self.bot.command('channels (?P<nick>.*)', self.find_channels_user_in),
+            self.bot.command('dump', self.dump_mappings, auth_level=20),
         ]
         self.events = []
 
-    def find_nick(self, nick, nickhost, action, targets, message, m):
-        nick = m.group('nick')
-        result = self.ident.user_of_nick(nick)
+    def find_ident_nick(self, nick, nickhost, action, targets, message, m):
+        target_ident = m.group('ident')
+        result = self.ident.nick_of_user(target_ident)
         if result:
-            if self.ident.is_user_in_channel(result, targets[0]):
-                self.irc.msg_all(result, targets)
-            else:
-                self.irc.msg_all(u'{0} is not in this channel'.format(nick), targets)
+            self.irc.msg_all(result, targets)
+        else:
+            self.irc.msg_all(u'No nick mapping for {0}'.format(target_ident), targets)
 
-    def find_nick_host(self, nick, nickhost, action, targets, message, m):
-        nickhost = m.group('nickhost')
-        result = self.ident.nick_of_user(nickhost)
-        self.irc.msg_all(result, targets)
+    def find_nick_ident(self, nick, nickhost, action, targets, message, m):
+        target_nick = m.group('nick')
+        result = self.ident.user_of_nick(target_nick)
+        if result:
+            self.irc.msg_all(result, targets)
+        else:
+            self.irc.msg_all(u'No ident mapping for {0}'.format(target_nick), targets)
 
     def find_users_in_channel(self, nick, nickhost, action, targets, message, m):
         chan = m.group('chan')
@@ -50,3 +53,7 @@ class IdentHostControl:
             self.irc.msg_all(u','.join(channels), targets)
         else:
             self.irc.msg_all(u'I am not in any channels with {0}'.format(nick), targets)
+
+    def dump_mappings(self, nick, nickhost, action, targets, message, m):
+        self.ident.dump()
+        self.irc.msg_all(u'Dumped mapping data to json file', targets)
