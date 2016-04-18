@@ -52,6 +52,8 @@ class IdentHostEngine:
         Remove all channel and nick mappings
         for this user
         '''
+        #get nick based on host
+        nick = self.nick_of_user(user)
         # remove appropriate mappings
         del self.nickmap[nick]
         del self.hostmap[user]
