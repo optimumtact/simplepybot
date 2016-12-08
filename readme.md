@@ -1,6 +1,6 @@
 Simplepybot is an attempt at a dead simple python irc bot that got way out of control
 
-It is currently targeting python3 test
+It is currently targeting python3
 
 #Configuration
 configuration is done by editing the basic.ini file, you can define more core and custom modules by adding them.
