@@ -45,7 +45,7 @@ self.events[
     ...
 ]
 ```
-see event_util for documentation on the event/command handlers (TODO write a nice version)
+see event_util for documentation on the event/command handlers, commands are for responding to user input and events are for hooking into real irc events (TODO write a nice version)
 
 for the event botflags you can use any option from the numerics.py file, get them by adding the following import to your module
 ```
